@@ -1,0 +1,2 @@
+cd /Users/hendrikesser/Desktop/Uni-sonstige/finance_dashboard
+python3 -m streamlit run 00_Home.py
