@@ -3,7 +3,4 @@ numpy
 matplotlib
 pandas
 scipy
-streamlit-option-menu
-yfinance
-
 
