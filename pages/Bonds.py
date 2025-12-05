@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 import pandas as pd 
 from scipy.optimize import fsolve
 from streamlit_option_menu import option_menu
-import polars as pl
-import ustreasurycurve as ust
 import yfinance as yf
 
 
