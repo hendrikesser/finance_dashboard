@@ -1,6 +1,9 @@
 streamlit
 numpy
-pandas
 matplotlib
+pandas
 scipy
+streamlit-option-menu
+yfinance
+
 
