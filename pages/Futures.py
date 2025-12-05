@@ -13,7 +13,7 @@ st.title("📈 Futures Dashboard")
 
 section = st.selectbox(
     "Select subsection:", 
-    ["Basics and Pay Off", "Commodity and Stock Futures", "Foreign Exchange and Interest Rate Futures"]
+    ["Basics, Pay Offs and Strategies", "Commodity and Stock Futures", "Foreign Exchange and Interest Rate Futures", "Index and VIX Futures"]
 )
 
 st.write("coming soon...")

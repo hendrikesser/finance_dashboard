@@ -3,6 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd 
 from scipy.optimize import fsolve
+from streamlit_option_menu import option_menu
+import polars as pl
+import ustreasurycurve as ust
+import yfinance as yf
+
+
 
 
 # ===========================
@@ -12,12 +18,82 @@ st.set_page_config(page_title="Bonds Dashboard", layout="wide")
 st.title("📈 Bonds Dashboard")
 
 # ===========================
-# Subsection Selection
+# Custom CSS for blue dropdown text
+# ===========================
+st.markdown("""
+<style>
+/* Top dropdown font color */
+div[data-baseweb="select"] > div {
+    color: #1a73e8 !important;  /* blue text */
+    font-size: 16px !important;
+    font-weight: bold;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ===========================
+# Top Dropdown Menu
 # ===========================
 section = st.selectbox(
-    "Select subsection:", 
+    "Select subsection:",
     ["Zero-Coupon Bond", "Coupon-Paying Bond", "Analytics"]
 )
+
+# =======================
+# Sidebar Inputs
+# =======================
+if section == "Zero-Coupon Bond":
+    st.sidebar.header("Zero-Coupon Bond Inputs")
+    F = st.sidebar.number_input("Face Value ($)", 100, 1_000_000, 1000)
+    r_zcb = st.sidebar.slider("Yield (%)", 0.0, 20.0, 3.0) / 100
+    T = st.sidebar.slider("Maturity (years)", 0.1, 30.0, 5.0)
+    freq = st.sidebar.selectbox("Compounding Frequency", ["Annual", "Semi-Annual", "Quarterly", "Monthly"])
+    
+
+elif section == "Coupon-Paying Bond":
+    st.sidebar.header("Coupon-Paying Bond Inputs")
+    F = st.sidebar.number_input("Face Value ($)", 100, 1_000_000, 1000)
+    C = st.sidebar.number_input("Annual Coupon ($)", 0, 100_000, 50)
+    N = st.sidebar.slider("Number of Years (Maturity)", 1, 50, 5)
+    r_coupon = st.sidebar.slider("Yield (%)", 0.0, 20.0, 3.0) / 100
+
+elif section == "Analytics":
+    st.sidebar.header("Analytics Inputs")
+    F = st.sidebar.number_input("Face Value ($)", 100, 1_000_000, 1000, key="analytics_F")
+    C = st.sidebar.number_input("Annual Coupon ($)", 0, 100_000, 50, key="analytics_C")
+    N = st.sidebar.slider("Number of Years (Maturity)", 1, 50, 5, key="analytics_N")
+    r_percent = st.sidebar.slider("Yield / YTM (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.5, key="analytics_r_coupon")   
+    r = r_percent / 100
+
+
+
+
+
+# ===============================
+# US Treasury bond data
+# ===============================
+@st.cache_data
+def get_latest_yf_curve():
+    symbols = {'3M':'^IRX', '5Y':'^FVX', '10Y':'^TNX', '30Y':'^TYX'}
+    data = {}
+    for maturity, ticker_symbol in symbols.items():
+        ticker = yf.Ticker(ticker_symbol)
+        # Get latest close price and convert to %
+        data[maturity] = ticker.history(period="1d")['Close'][-1]
+        
+    df = pd.DataFrame({
+        "Maturity": list(data.keys()),
+        "Yield (%)": [round(y, 2) for y in data.values()]
+    })
+
+    # Optional: set Maturity as index to remove default integer index
+    df.set_index("Maturity", inplace=True)
+    return df
+
+curve_df = get_latest_yf_curve()
+
+
+
 
 
 
@@ -50,12 +126,6 @@ if section == "Zero-Coupon Bond":
         "rate of return. The bond price decreases if the yield increases or the maturity lengthens."
     )
 
-    # ===============================
-    # Inputs
-    # ===============================
-    F = st.number_input("Face Value ($)", 100, 1_000_000, 1000)
-    r_zcb = st.slider("Yield (%)", 0.0, 20.0, 3.0) / 100
-    T = st.slider("Maturity (years)", 0.1, 30.0, 5.0)
 
     # ===============================
     # Price under annual compounding
@@ -63,6 +133,9 @@ if section == "Zero-Coupon Bond":
     ZCB_price = F / (1 + r_zcb)**T
     T_values = np.linspace(0.1, 30, 300)
     zcb_prices_vs_T = F / (1 + r_zcb)**T_values
+
+
+ 
 
     # ===============================
     # Layout: Inputs + Graph
@@ -74,8 +147,10 @@ if section == "Zero-Coupon Bond":
         st.write(f"**Face Value:** ${F:,.0f}")
         st.write(f"**Maturity:** {T} years")
         st.write(f"**Yield:** {r_zcb*100:.2f}%")
-        st.write(f"#### Annual Compounding Bond Price: **${ZCB_price:,.2f}**")
-
+        st.write(f"#### Annual Compounding Bond Price: **${ZCB_price:,.2f}**\n\n")
+        st.write("The US Government offers different types of zero-coupon bonds, known as Treasury Bills (T-Bills), with different maturities.\n"
+                "Latest US Treasury Yields (via Yahoo Finance")
+        st.table(curve_df)
 
     with col2:
         st.subheader("Price vs Maturity (Annual Compounding)")
@@ -99,10 +174,6 @@ if section == "Zero-Coupon Bond":
         "see its effect on the bond price."
     )
 
-    freq = st.selectbox(
-        "Select compounding frequency:",
-        ["Annual", "Semi-Annual", "Quarterly", "Monthly"]
-    )
 
     freq_map = {"Annual": 1, "Semi-Annual": 2, "Quarterly": 4, "Monthly": 12}
     n = freq_map[freq]
@@ -119,6 +190,7 @@ if section == "Zero-Coupon Bond":
         st.write(f"**Face Value:** ${F:,.0f}")
         st.write(f"**Maturity:** {T} years")
         st.write(f"**Yield:** {r_zcb*100:.2f}%")
+        st.write(f"#### Annual Bond Price: **${ZCB_price:,.2f}**")
         st.write(f"#### {freq} Bond Price: **${ZCB_price_disc:,.2f}**")
 
     with d2:
@@ -149,8 +221,8 @@ if section == "Zero-Coupon Bond":
     cc1, cc2 = st.columns(2)
     with cc1:
         st.subheader("Price Comparison")
-        st.write(f"**Annual Compounding Price:** ${ZCB_price:,.2f}")
-        st.write(f"**Continuous Compounding Price:** ${ZCB_price_cont:,.2f}")
+        st.write(f"#### Annual Compounding Price: **${ZCB_price:,.2f}**")
+        st.write(f"#### Continuous Compounding Price: **${ZCB_price_cont:,.2f}**")
         st.write(
             "Continuous compounding discounts more frequently, so the present value is slightly lower. "
             "The difference grows with longer maturities or higher yields. \n\n"
@@ -209,15 +281,6 @@ elif section == "Coupon-Paying Bond":
     )
 
     # ===============================
-    # Inputs
-    # ===============================
-    F = st.number_input("Face Value ($)", 100, 1_000_000, 1000)
-    C = st.number_input("Annual Coupon ($)", 0, 100_000, 50)
-    N = st.slider("Number of Years (Maturity)", 1, 50, 5)
-    r_coupon = st.slider("Yield (%)", 0.0, 20.0, 3.0) / 100
-  
-
-    # ===============================
     # Bond Price Calculations
     # ===============================
     cash_flows = [C] * N
@@ -250,18 +313,26 @@ elif section == "Coupon-Paying Bond":
     # Cash Flow Table
     # ===============================
     df = pd.DataFrame({
-    "Year": range(1, N+1),
-    "Coupon": [C]*N,
-    "Total CF": cash_flows,
-    "PV (annual)": [cf/(1+r_coupon)**(i+1) for i, cf in enumerate(cash_flows)],
-})
+        "Year": range(1, N+1),
+        "Coupon": [C]*N,
+        "Total CF": cash_flows,
+        "PV (annual)": [cf/(1+r_coupon)**(i+1) for i, cf in enumerate(cash_flows)],
+    })
 
+    # Add total PV row
     df = pd.concat([df, pd.DataFrame({
-    "Year": ["Total PV"],
-    "Coupon": [""],
-    "Total CF": [""],
-    "PV (annual)": [df["PV (annual)"].sum()]
-})], ignore_index=True)
+        "Year": ["Total PV"],
+        "Coupon": [""],
+        "Total CF": [""],
+        "PV (annual)": [df["PV (annual)"].sum()]
+    })], ignore_index=True)
+
+    # Set 'Year' as the index to remove default integer index
+    df.set_index("Year", inplace=True)
+
+    # Display in Streamlit
+   
+
 
     # ===============================
     # Layout
@@ -276,9 +347,7 @@ elif section == "Coupon-Paying Bond":
         st.write(f"#### Price (Annual Compounding): **${coupon_price:,.2f}**")
         st.write(f"#### Price (Continuous Compounding): **${coupon_price_cont:,.2f}**")
         st.write(f"#### Current Yield: **{current_yield*100:.2f}%**")
-        st.markdown("---")
-        st.subheader("Cash Flow Table")
-        st.table(df)
+        
 
     with col2:
         st.subheader("Price vs Maturity")
@@ -291,7 +360,16 @@ elif section == "Coupon-Paying Bond":
         ax.legend()
         st.pyplot(fig)
 
-    st.markdown("---")
+    st.write ("---")
+
+    st.write("💡 **Yield Used for Discounting Future Cash Flows:**\n"
+        "- The bond price is calculated by discounting **all future cash flows** (coupons + principal) using the **input yield / Yield to Maturity (YTM)**.\n"
+        "- **Current yield** (annual coupon divided by bond price) is only a measure of **income relative to price**, and does **not account for principal repayment** or timing of cash flows.\n"
+        "- **Intuition:** YTM represents the total return an investor earns if the bond is held to maturity, which is why it is used for discounting.")
+    st.write ("---")
+    st.subheader("Cash Flow Table")
+    st.table(df)
+    st.write ("---")
     st.write(
         "### 🔹 Staircase Pattern Explanation\n"
         "The small 'steps' seen in the bond price vs maturity graph occur because the bond has **discrete annual coupon payments**. "
@@ -322,24 +400,6 @@ elif section == "Analytics":
     )
     st.markdown("---")
 
-    # ===============================
-    # Inputs
-    # ===============================
-    st.subheader("🔹 Bond Inputs")
-    F = st.number_input("Face Value ($)", 100, 1_000_000, 1000, key="analytics_F")
-    C = st.number_input("Annual Coupon ($)", 0, 100_000, 50, key="analytics_C")
-    N = st.slider("Number of Years (Maturity)", 1, 50, 5, key="analytics_N")
-    r = st.slider("Current Yield (%)", 0.0, 20.0, 3.0, key="analytics_r") / 100
-
-    cash_flows = [C]*N
-    cash_flows[-1] += F
-    price = sum(cf / (1+r)**(i+1) for i, cf in enumerate(cash_flows))
-
-    st.markdown(
-        "These inputs define the bond's **future cash flows** and the **discount rate** used to calculate present value. "
-        "Understanding these basics is crucial before analyzing how bond prices react to yield changes."
-    )
-    st.markdown("---")
 
     # ===============================
     # Duration Section
@@ -352,7 +412,7 @@ elif section == "Analytics":
     )
 
     st.markdown(
-        "💡 **Intuition for Beginners:**\n"
+        "💡 **Intuition:**\n"
         "- Think of duration as a **risk meter for bonds**: the higher the duration, the more a bond's price will fluctuate if interest rates change.\n"
         "- **Zero-coupon bonds:** Duration equals maturity because all cash comes at the end.\n"
         "- **Coupon-paying bonds:** Duration is shorter than maturity because you receive some cash earlier.\n"
@@ -360,12 +420,18 @@ elif section == "Analytics":
         "  1. **Time to maturity** – longer maturities generally increase duration.\n"
         "  2. **Coupon size** – higher coupons shorten duration.\n"
         "  3. **Price vs interest rate environment** – premium or discount bonds slightly alter duration.\n"
-        "- Example: A 10-year bond with $50 annual coupon and $1,000 face value has an 'average waiting time' of ~7–8 years. This indicates how sensitive its price is to interest rate changes."
+        "- Example: A 10-year bond with 50 USD annual coupon and 1000 USD face value has an 'average waiting time' of ~7–8 years. This indicates how sensitive its price is to interest rate changes."
     )
 
     # ===============================
     # Formulas
     # ===============================
+
+    cash_flows = [C]*N
+    cash_flows[-1] += F
+    price = sum(cf / (1+r)**(i+1) for i, cf in enumerate(cash_flows))
+
+
     st.latex(r"Macaulay\ Duration:\ D_{Mac} = \frac{\sum_{i=1}^{N} t_i \cdot PV(CF_i)}{Price}")
     st.latex(r"Modified\ Duration:\ D_{Mod} = \frac{D_{Mac}}{1+r}")
 
@@ -375,14 +441,14 @@ elif section == "Analytics":
 
     col1, col2 = st.columns(2)
     with col1:
-        st.write(f"**Macaulay Duration:** {macaulay_duration:.2f} years")
-        st.write(f"**Modified Duration:** {modified_duration:.2f} years")
+        st.write(f"#### Macaulay Duration: {macaulay_duration:.2f} years")
+        st.write(f"#### Modified Duration: {modified_duration:.2f} years")
         st.markdown(
             "💡 **Takeaways:**\n"
             "- **Macaulay duration** shows the weighted average time to receive cash flows.\n"
             "- **Modified duration** estimates the **percentage change in bond price** for a 1% change in yield.\n"
             "- Longer duration → higher price sensitivity.\n"
-            "- Example: A 5-year bond with $50 annual coupon and $1000 face value at 3% yield has a Macaulay duration of ~4.5 years."
+            "- Mathematically, a bond with a modified duration of 5 years will see its price change by approximately 5% for a 1% change in yield."
         )
 
     # ===============================
@@ -433,7 +499,7 @@ elif section == "Analytics":
             "- Duration generally **increases with maturity** for bonds with fixed coupons.\n"
             "- Bonds with **longer maturities** are more sensitive to interest rate changes.\n"
             "- **Zero-coupon bonds** have durations equal to their maturity.\n"
-            "- Example: A 10-year bond with $50 annual coupon and $1000 face value has an approximate duration of 7–8 years."
+            "- This is because no interest is being paid before maturity, so all cash flows occur at the end."
         )
 
     with col2:
@@ -444,85 +510,29 @@ elif section == "Analytics":
         ax.set_title("Duration vs Maturity (Approximation)")
         st.pyplot(fig)
 
-
+    st.write("Hence, duration provides a useful measure of interest rate risk (change sensitivity) and average time to cash flows for bonds.\n\n"
+             "At the end of the page we will cover one concrete example illustrating price changes with interest rate shifts."
+                )
     st.markdown("---")
 
-    # ===============================
-    # Convexity
-    # ===============================
-    st.subheader("📈 Convexity")
-    st.write(
-        "Convexity measures the **curvature of the price-yield relationship**, improving duration-based approximations."
-    )
-    st.latex(r"Convexity:\ C = \frac{\sum_{i=1}^{N} CF_i \cdot t_i (t_i+1)}{(1+r)^{t_i+2} \cdot Price}")
 
-    convexity = sum(cf * (i+1)*(i+2) / (1+r)**(i+3) for i, cf in enumerate(cash_flows)) / price
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write(f"**Approximate Convexity:** {convexity:.2f}")
-        st.markdown(
-            "💡 **Intuition:**\n"
-            "- Captures the **non-linear effect** of yield changes on bond price.\n"
-            "- Corrects the linear approximation from duration for larger yield changes.\n"
-            "- Example: For the same 5-year $50 coupon bond, convexity ~22 indicates the curvature of price changes."
-        )
-
-    with col2:
-        prices_convex = [price * (1 - modified_duration*dy + 0.5*convexity*dy**2) for dy in delta_yields]
-        fig, ax = plt.subplots()
-        ax.plot(delta_yields*100, prices_exact, label="Exact Price")
-        ax.plot(delta_yields*100, prices_approx, linestyle="--", label="Duration Approx.")
-        ax.plot(delta_yields*100, prices_convex, linestyle=":", label="Duration + Convexity")
-        ax.set_xlabel("Yield Change (%)")
-        ax.set_ylabel("Bond Price ($)")
-        ax.set_title("Price vs Yield with Duration & Convexity")
-        ax.legend()
-        st.pyplot(fig)
-
-    st.markdown("---")
 
    # ===============================
     # Yield-to-Maturity vs Maturity Curve
     # ===============================
-    st.subheader("💹 Yield-to-Maturity (YTM) vs Maturity")
+    st.subheader("💹 Yield-to-Maturity")
     st.write(
         "The **Yield-to-Maturity (YTM)** is the discount rate that makes the present value of a bond's cash flows equal to its current price. "
         "This plot shows how the YTM changes for different maturities, keeping the bond's price fixed."
     )
-    st.latex(r"Price = \sum_{i=1}^{N} \frac{CF_i}{(1+YTM)^{t_i}}")
+    st.latex(r"Bond \ Price = \sum_{i=1}^{N} \frac{CF_i}{(1+YTM)^{t_i}}")
 
     st.markdown(
         "💡 **Intuition:**\n"
         "- Longer maturities usually have higher yields for a given price due to **increased interest rate risk**.\n"
         "- This curve helps investors understand the relationship between **time to maturity** and required yield.\n"
-        "- Example: A bond priced at $950 with $50 annual coupon may have a YTM of 4.5% for 5 years, but 5% for 10 years."
+        "- Example: A bond priced at 950 USD with 50 USD annual coupon may have a YTM of 4.5% for 5 years, but 5% for 10 years."
     )
-
-    # Generate range of maturities
-    maturity_range = np.arange(1, 31)  # 1 to 30 years
-    ytm_maturities = []
-
-    def calc_ytm(cf, price_guess, tol=1e-6, max_iter=1000):
-        """
-        Solve for YTM using iterative method (Newton-Raphson)
-        """
-        ytm = 0.05  # initial guess
-        for _ in range(max_iter):
-            f = sum(cf[i]/(1+ytm)**(i+1) for i in range(len(cf))) - price_guess
-            f_prime = sum(- (i+1)*cf[i]/(1+ytm)**(i+2) for i in range(len(cf)))
-            ytm_next = ytm - f/f_prime
-            if abs(ytm_next - ytm) < tol:
-                return ytm_next
-            ytm = ytm_next
-        return ytm
-
-    # Compute YTM for each maturity
-    for T_m in maturity_range:
-        cash_flows_m = [C]*T_m
-        cash_flows_m[-1] += F  # add face value to last payment
-        ytm_m = calc_ytm(cash_flows_m, price)
-        ytm_maturities.append(ytm_m)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -531,18 +541,40 @@ elif section == "Analytics":
             "- Investors can see the trade-off between longer maturities and higher required yields.\n"
             "- Useful for **pricing bonds with different maturities** or building a **yield curve**."
         )
+        st.write("Latest US Treasury Yields (via Yahoo Finance)")
+        st.table(curve_df)
 
+        st.write("Note that the 3M yield is annualized T-bill yield, not a coupon-bearing bond.")
+
+
+
+    # --- Plot YTM and Treasury curve ---
     with col2:
-        fig, ax = plt.subplots()
-        ax.plot(maturity_range, np.array(ytm_maturities)*100)
+        fig, ax = plt.subplots(figsize=(8,5))
+        
+        # Map maturities to numeric years
+        maturity_map = {"3M": 0.25, "5Y": 5, "10Y": 10, "30Y": 30}
+        treasury_maturities = [maturity_map[m] for m in curve_df.index]  # use index now
+        treasury_yields = curve_df["Yield (%)"].values  # already in %
+        
+        # Plot the curve
+        ax.plot(treasury_maturities, treasury_yields, 
+                label="US Treasury Yield Curve", marker='o', linestyle="--", color="orange")
+        
+        # Labels & title
         ax.set_xlabel("Maturity (Years)")
-        ax.set_ylabel("Yield-to-Maturity (%)")
-        ax.set_title("Yield-to-Maturity vs Maturity")
+        ax.set_ylabel("Treasury Yield (%)")
+        ax.set_title("Treasury Yield Curve")
+        ax.legend()
+        ax.grid(True)
+        
         st.pyplot(fig)
 
-#Duration vs Maturity (Approximation)")
-    st.pyplot(fig)
 
+
+
+
+    st.markdown("---")
 
     # ===============================
     # Price Change Example with Interest Rate Shift
@@ -551,55 +583,77 @@ elif section == "Analytics":
 
     st.write(
         "Let's illustrate how a change in interest rates affects the bond price using **Modified Duration** "
-        "and **Convexity** for a concrete example."
+        "for a concrete example."
     )
 
-    # Example bond
-    F_ex = 1000
-    C_ex = 40
-    N_ex = 10
-    r_ex = 0.04
+    # Use the same bond inputs as above (F, C, N, r_coupon)
+    F_ex = F
+    C_ex = C
+    N_ex = N
+    r_ex = r
 
+    # Interest rate shift slider (new input)
+ 
+    delta_y_percent = st.sidebar.slider("Interest Rate Change (%)", min_value=-5.0, max_value=5.0, value=2.0, step=0.5)
+    delta_y_ex = delta_y_percent / 100
+
+
+    # Calculate cash flows and price
     cash_flows_ex = [C_ex]*N_ex
     cash_flows_ex[-1] += F_ex
     price_ex = sum(cf / (1+r_ex)**(i+1) for i, cf in enumerate(cash_flows_ex))
+
+    # Calculate Macaulay and Modified Duration
     macaulay_ex = sum((i+1)*cf / (1+r_ex)**(i+1) for i, cf in enumerate(cash_flows_ex)) / price_ex
     modified_ex = macaulay_ex / (1+r_ex)
-    convexity_ex = sum(cf*(i+1)*(i+2)/(1+r_ex)**(i+3) for i, cf in enumerate(cash_flows_ex)) / price_ex
 
-    delta_y_ex = 0.02  # +2% interest rate change
-
+    # Price change using duration approximation
+        # Calculate approximate and exact price changes
     price_change_duration = - modified_ex * delta_y_ex * price_ex
-    price_change_convexity = price_change_duration + 0.5 * convexity_ex * (delta_y_ex**2) * price_ex
     price_exact_ex = sum(cf / (1+r_ex+delta_y_ex)**(i+1) for i, cf in enumerate(cash_flows_ex))
 
+    # Display metrics with explanation
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown(f"**Bond Example:** {N_ex}-year bond, Face Value ${F_ex}, Annual Coupon ${C_ex}, Yield {r_ex*100:.2f}%")
-        st.write(f"Current Price: **${price_ex:,.2f}**")
-        st.write(f"Modified Duration: {modified_ex:.2f}")
-        st.write(f"Convexity: {convexity_ex:.2f}")
-        st.write(f"Interest Rate Increase: {delta_y_ex*100:.2f}%")
-        st.write(f"Approx Price Change (Duration): ${price_change_duration:,.2f}")
-        st.write(f"Approx Price Change (Duration + Convexity): ${price_change_convexity:,.2f}")
-        st.write(f"Exact Price after 2% yield increase: ${price_exact_ex:,.2f}")
+        st.markdown(f"**Bond Example:** {N_ex}-year bond, Face Value {F_ex} USD, Annual Coupon {C_ex} USD, Yield {r_ex*100:.2f}%")
+        
+        # Show original price
+        st.write(f"1️⃣ Current Price (using YTM): **${price_ex:,.2f}**")
+    
+        # Show modified duration
+        st.write(f"\n2️⃣ Modified Duration: **{modified_ex:.2f} years**")
+
+        # Show interest rate change
+        st.write(f"\n3️⃣ Interest Rate Change: **{delta_y_ex*100:.2f}%**")
+
+        # Approximate price change using duration
+        st.write(f"4️⃣ Approximate Price Change (Duration):")
+        st.write(f"   ΔPrice ≈ - Duration × ΔYield × Current Price")
+        st.write(f"   ΔPrice ≈ - {modified_ex:.2f} × {delta_y_ex*100:.2f}% × USD {price_ex:,.2f} = USD {price_change_duration:,.2f}")
+        st.write(f"   → New Price (Approx.) = **${price_ex + price_change_duration:,.2f}**")
+
+        # Exact price after yield change
+        st.write(f"\n5️⃣ Exact Price after yield change:")
+        st.write(f"   - Calculated by discounting each cash flow using the new yield: {(r_ex + delta_y_ex)*100:.2f}%")
+        st.write(f"   → Exact Price = **${price_exact_ex:,.2f}**")
+
         st.markdown(
             "💡 **Intuition:**\n"
-            "- The linear approximation (duration) slightly underestimates the price drop.\n"
-            "- Adding convexity improves the estimate, bringing it closer to the exact value.\n"
-            "- This example shows how sensitive longer-term, low-coupon bonds are to interest rate increases."
-        )
+            "- Duration provides a linear estimate of price change for small yield changes.\n"
+            "- Exact calculation shows the actual price impact.\n"
+            "- This illustrates why longer-term, low-coupon bonds are more sensitive to interest rate shifts."
+    )
 
+
+    # Price vs yield change plot
     with col2:
         delta_y_ex_vals = np.linspace(-0.05, 0.05, 100)
         prices_exact_plot = [sum(cf / (1+r_ex+dy)**(i+1) for i, cf in enumerate(cash_flows_ex)) for dy in delta_y_ex_vals]
         prices_duration_plot = [price_ex*(1 - modified_ex*dy) for dy in delta_y_ex_vals]
-        prices_convex_plot = [price_ex*(1 - modified_ex*dy + 0.5*convexity_ex*dy**2) for dy in delta_y_ex_vals]
 
         fig, ax = plt.subplots()
         ax.plot(delta_y_ex_vals*100, prices_exact_plot, label="Exact Price")
         ax.plot(delta_y_ex_vals*100, prices_duration_plot, linestyle="--", label="Duration Approx.")
-        ax.plot(delta_y_ex_vals*100, prices_convex_plot, linestyle=":", label="Duration + Convexity")
         ax.set_xlabel("Yield Change (%)")
         ax.set_ylabel("Bond Price ($)")
         ax.set_title("Price Change vs Yield Shift")

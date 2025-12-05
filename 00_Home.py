@@ -14,3 +14,5 @@ Welcome to your Finance Dashboard! Use the sidebar to navigate between sections:
 """)
 st.write("This dashboard provides tools and visualizations for analyzing various financial instruments. Select a section from the sidebar to get started!")
 
+import streamlit as st
+st.write("Streamlit version:", st.__version__)
