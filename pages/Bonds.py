@@ -72,23 +72,24 @@ elif section == "Analytics":
 # ===============================
 @st.cache_data
 def get_latest_yf_curve():
-    symbols = {'3M':'^IRX', '5Y':'^FVX', '10Y':'^TNX', '30Y':'^TYX'}
-    data = {}
-    for maturity, ticker_symbol in symbols.items():
-        ticker = yf.Ticker(ticker_symbol)
-        # Get latest close price and convert to %
-        data[maturity] = ticker.history(period="1d")['Close'][-1]
-        
+    symbols = {'3M': '^IRX', '5Y': '^FVX', '10Y': '^TNX', '30Y': '^TYX'}
+    
+    # Download all tickers at once → MUCH faster, avoids rate limits
+    tickers = " ".join(symbols.values())
+    df_raw = yf.download(tickers=tickers, period="1d")["Close"].iloc[-1]
+
+    # Map downloaded tickers back to maturities
+    data = {maturity: round(df_raw[ticker], 2) for maturity, ticker in symbols.items()}
+    
     df = pd.DataFrame({
         "Maturity": list(data.keys()),
-        "Yield (%)": [round(y, 2) for y in data.values()]
-    })
+        "Yield (%)": list(data.values())
+    }).set_index("Maturity")
 
-    # Optional: set Maturity as index to remove default integer index
-    df.set_index("Maturity", inplace=True)
     return df
 
 curve_df = get_latest_yf_curve()
+
 
 
 
@@ -321,7 +322,7 @@ elif section == "Coupon-Paying Bond":
     df = pd.concat([df, pd.DataFrame({
         "Year": ["Total PV"],
         "Coupon": [""],
-        "Total CF": [""],
+        "**Total CF**": [""],
         "PV (annual)": [df["PV (annual)"].sum()]
     })], ignore_index=True)
 
@@ -390,11 +391,11 @@ elif section == "Coupon-Paying Bond":
 # ===========================
 elif section == "Analytics":
 
-    st.header("Bond Analytics – Duration, Convexity & Price-Yield Analysis")
+    st.header("Bond Analytics – Duration, Price-Yield Analysis")
     st.write(
         "This section explores key bond metrics that help investors understand **price sensitivity, "
         "interest rate risk, and overall bond behavior**. "
-        "We cover duration, convexity, and price-yield relationships, with formulas, intuition, examples, and graphical illustrations."
+        "We cover duration and price-yield relationships, with formulas, intuition, examples, and graphical illustrations."
     )
     st.markdown("---")
 
