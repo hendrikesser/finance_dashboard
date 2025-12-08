@@ -46,7 +46,7 @@ st.write("""
 Welcome to the **Financial Dashboard**, an interactive learning platform covering the  
 four major building blocks of modern financial markets:
 
-### **📈 Futures • 💵 Bonds • 🔄 Swaps • 📘 Options**
+### **💵 Bonds • 📈 Futures • 📘 Options • 🔄 Swaps**
 
 Each section combines:
 - Intuitive explanations  

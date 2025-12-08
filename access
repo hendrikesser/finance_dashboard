@@ -1,2 +1,11 @@
-cd /Users/hendrikesser/Desktop/Uni-sonstige/finance_dashboard
+
+st.write("cd /Users/hendrikesser/Desktop/Uni-sonstige/finance_dashboard
 python3 -m streamlit run 00_Home.py
+
+
+git status
+git add .
+git commit -m Update Streamlit app: Stock & Commodity Futures section and other changes
+git push origin main
+
+")

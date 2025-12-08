@@ -13,7 +13,7 @@ import yfinance as yf
 # Page Title & Theme
 # ===========================
 st.set_page_config(page_title="Bonds Dashboard", layout="wide")
-st.title("📈 Bonds Dashboard")
+st.title("💵 Bonds Dashboard")
 
 # ===========================
 # Custom CSS for blue dropdown text
