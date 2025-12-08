@@ -588,23 +588,8 @@ elif section == "Stock and Commodity Futures":
         Thus, the future value of purchasing the stock must equal the futures price.
         """)
 
-        # Final Formula
-        st.write("### 🔹 Resulting Pricing Formula")
-        st.latex(r"F(T) = S_0 \, e^{rT}")
-
-        st.markdown("""
-        **Where:**  
-        - \( F(T) \): fair futures price for delivery at time \( T \)  
-        - \( S_0 \): current spot price  
-        - \( r \): risk-free interest rate  
-        - \( T \): time to maturity (in years)
-
-        ### 🔹 Economic Intuition
-        - Forward/futures price is the **cost of buying the stock and financing it until \( T \)**.  
-        - The stock’s uncertainty **does not matter** — its risk is already priced into \( S_0 \).  
-        - With no dividends, there are **no adjustments**, so the futures price is simply the **fully financed spot price**.
-        """)
-
+     
+    
     with colB:
         # ================================
         # Graph: Futures curve
@@ -628,9 +613,9 @@ elif section == "Stock and Commodity Futures":
 
     
 
-        st.markdown(f"""
-        #### 🔍 Futures Price Details
-        """)
+        st.markdown(
+            "<h4 style='text-align: center;'>🔍 Futures Pricing Formula</h4>",
+            unsafe_allow_html=True)
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("""
@@ -644,6 +629,26 @@ elif section == "Stock and Commodity Futures":
             F({T}) = {S0} * e^{{{r:.3f} * {T}}} = {F_T:.2f}
        
         """)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("### 🔹 Resulting Pricing Formula")
+        st.latex(r"F(T) = S_0 \, e^{rT}")
+
+        st.markdown("""
+        **Where:**  
+        - \( F(T) \): fair futures price for delivery at time \( T \)  
+        - \( S_0 \): current spot price  
+        - \( r \): risk-free interest rate  
+        - \( T \): time to maturity (in years)""")
+
+    with col2:
+        st.markdown("""
+            ### 🔹 Economic Intuition
+            - Forward/futures price is the **cost of buying the stock and financing it until \( T \)**.  
+            - The stock’s uncertainty **does not matter** — its risk is already priced into \( S_0 \).  
+            - With no dividends, there are **no adjustments**, so the futures price is simply the **fully financed spot price**.
+            """)
 
 
     st.markdown("---")
@@ -696,14 +701,6 @@ elif section == "Stock and Commodity Futures":
         """)
         st.latex(r"F_0 = S_0 \, e^{(r - q)*T}")
 
-
-        st.markdown("""
-        **Intuition:**  
-        - Futures prices are lower than the non-dividend case because the holder **does not receive dividends**, reducing the attractiveness of holding the futures versus the underlying stock.  
-        - **Higher dividends → lower futures price**, as the stock becomes more valuable due to expected payouts.  
-        - **Higher interest rates → higher futures price**, reflecting the increased cost of financing the underlying stock.
-        """)
-
     with colB:
         # GRAPH — Dividend vs Non-Dividend Futures Curve
         T_vals = np.linspace(0.1, 10.0, 100)
@@ -747,6 +744,17 @@ elif section == "Stock and Commodity Futures":
             **Calculation**: F({T}) = {S0} × e^({r} × {T}) = **{F_non_T:.2f}**\n
             **Calculation**: F({T}) = {S0} × e^(({r} - {div_yield:.3f}) × {T}) = **{F_div_T:.2f}**
             """)
+
+    st.markdown("""### 🔹 Economic Intuition""")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write(""" 
+        - Futures prices are lower than the non-dividend case because the holder **does not receive dividends**, reducing the attractiveness of holding the futures versus the underlying stock.  
+        - **Higher dividends → lower futures price**, as the stock becomes more valuable due to expected payouts.""")
+    with col2:
+        st.write("""
+        - **Higher interest rates → higher futures price**, reflecting the increased cost of financing the underlying stock.""")
+
 
     st.markdown("---")
 
@@ -807,24 +815,6 @@ elif section == "Stock and Commodity Futures":
         $$
         """)
 
-
-        st.markdown("""
-        ### 🔹 Economic Intuition
-
-        - **Higher storage costs \(u\) → futures price rises**  
-        More resources are needed to store, insure, and transport the commodity, increasing the cost of carry.
-
-        - **Higher convenience yield \(y\) → futures price falls**  
-        Holding the physical commodity provides benefits (e.g., production security), making futures less attractive.
-
-        - **Longer maturities amplify effects**  
-        Costs and yields accumulate over time, so longer-dated futures are more sensitive to \(u\) and \(y\).
-        """)
-
-
-
-
-
     # RIGHT COLUMN — GRAPH + FORMULA BREAKDOWN
     with colB:
 
@@ -873,6 +863,26 @@ elif section == "Stock and Commodity Futures":
                 F({T}) = {S0} * e^{{({r:.3f} + {storage:.3f} - {conv_yield:.3f}) * {T}}}
                 = {F_commodity_T:.2f}
                 """)
+
+    st.markdown("""
+        ### 🔹 Economic Intuition""")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+
+        - **Higher storage costs \(u\) → futures price rises**  
+        More resources are needed to store, insure, and transport the commodity, increasing the cost of carry.
+
+        - **Higher convenience yield \(y\) → futures price falls**  
+        Holding the physical commodity provides benefits (e.g., production security), making futures less attractive.""")
+    with col2:
+        st.markdown("""
+        - **Longer maturities amplify effects**  
+        Costs and yields accumulate over time, so longer-dated futures are more sensitive to \(u\) and \(y\).
+        """)
+
+
 
     st.markdown("---")
 
@@ -1018,29 +1028,36 @@ elif section == "Stock and Commodity Futures":
         # --------------------------
         static_df = pd.DataFrame({
             "Month": ["Oct 2011", "Mar 2012", "Jul 2012"],
-            "Spot Price": [69, None, None],  # only initial spot
+            "Spot Price": [69.0, None, None],  # only initial spot
             "Short Price": [68.20, 67.00, 66.30],
             "Close Price": [67.40, 66.50, 65.90],
             "Profit per Barrel": [0.80, 0.50, 0.40],
-            "Type": ["Historical"]*3
+            "Type": ["Historical"] * 3
         })
 
         # --------------------------
         # Simulated rollover example
         # --------------------------
         np.random.seed(42)
+
+        # Simulated spot changes
         spot_changes_roll = np.random.normal(0, vol_spot, roll_months).cumsum()
-        fut_start = spot_prices[-1]  # start futures at last simulated spot
+
+        # Set futures start equal to last simulated spot
+        fut_start = float(spot_prices[-1])
+
+        # Simulated futures curve
         fut_prices_roll = fut_start + np.random.normal(0, vol_fut, roll_months).cumsum()
+
         pnl_roll = fut_prices_roll - fut_start
 
         sim_df = pd.DataFrame({
-            "Month": [f"Sim Month {i}" for i in range(1, roll_months+1)],
+            "Month": [f"Sim Month {i}" for i in range(1, roll_months + 1)],
             "Spot Price": np.round(spot_prices[-1] + spot_changes_roll, 2),
-            "Short Price": np.round(fut_start, 2),  # entry price same for simplicity
+            "Short Price": [round(fut_start, 2)] * roll_months,
             "Close Price": np.round(fut_prices_roll, 2),
             "Profit per Barrel": np.round(pnl_roll, 2),
-            "Type": ["Simulated"]*roll_months
+            "Type": ["Simulated"] * roll_months
         })
 
         # --------------------------
@@ -1049,12 +1066,13 @@ elif section == "Stock and Commodity Futures":
         combined_df = pd.concat([static_df, sim_df], ignore_index=True)
 
         # --------------------------
-        # Display interactive table
+        # Display clean table
         # --------------------------
         st.write("**Rolling Hedge Table:**")
-        st.dataframe(
-            combined_df.style.highlight_max(subset=["Profit per Barrel"], color="#d4f4dd")
-    )
+
+        # Streamlit cannot display `.style` objects inside st.dataframe — use st.dataframe directly
+        st.dataframe(combined_df, use_container_width=True)
+
 
     
    
