@@ -63,18 +63,14 @@ if section == "Basics & Payoffs":
 
     # Payoff Inputs
     st.sidebar.subheader("Payoff Parameters")
-    F0 = st.sidebar.slider(
-        "Initial Futures Price F₀", 
-        min_value=1, max_value=100, value=50)
+    F0 = st.sidebar.slider("Initial Futures Price F₀", min_value=1, max_value=100, value=50)
     payoff_qty = st.sidebar.slider("Quantity (Contract Size)", 1, 100, 10)
-    FT_user = st.sidebar.slider(
-        "Settlement Price Fᵀ",
-        min_value=1, max_value=100, value=60)
+    FT_user = st.sidebar.slider("Settlement Price Fᵀ", min_value=1, max_value=100, value=60)
 
     # Number of days for MtM simulation
     st.sidebar.markdown("---")
     st.sidebar.subheader("Mark-to-Market Parameters")
-    days = st.sidebar.slider("Number of Days to Simulate", min_value=1, max_value=30, value=10)
+    days = st.sidebar.slider("Number of Days to Simulate", min_value=1, max_value=30, value=8)
 
     # Generate New Prices Button
     if "Ft_daily" not in st.session_state:
@@ -100,24 +96,20 @@ elif section == "Stock and Commodity Futures":
     r = st.sidebar.slider("Risk-free rate (%)", 0.0, 20.0, 3.0) / 100
     div_yield = st.sidebar.slider("Dividend Yield (%)", 0.0, 10.0, 2.0) / 100
     T = st.sidebar.slider("Maturity (years)", 0.1, 10.0, 1.0)
-    st.sidebar.write("---")
+
     st.sidebar.header("Commodity Futures Inputs")
     storage = st.sidebar.slider("Storage Cost (%)", 0.0, 10.0, 1.0) / 100
     conv_yield = st.sidebar.slider("Convenience Yield (%)", 0.0, 10.0, 1.0) / 100
-    st.sidebar.write("use Maturity slider above for commodity futures as well")
-    st.sidebar.write("---")
-    st.sidebar.header("Basis Risk and Rollover Parameters")
-    days_slider = st.sidebar.slider("Number of Days to Simulate", 5, 30, 12)
-    roll_months = st.sidebar.slider(
-            "Number of Simulated Roll Months", min_value=1, max_value=12, value=3
-        )
-    vol_spot = st.sidebar.slider(
-            "Spot Price Volatility (Std Dev)", min_value=0.1, max_value=5.0, value=1.0, step=0.1
-        )
-    vol_fut = st.sidebar.slider(
-            "Futures Price Volatility (Std Dev)", min_value=0.1, max_value=5.0, value=0.8, step=0.1
-        )
+    st.sidebar.write("**Note**: use T & r from above")
 
+    st.sidebar.header("Basis Risk Parameters")
+    days_slider = st.sidebar.slider("Number of Days to Simulate", 3, 15, 7)
+
+    st.sidebar.header("Rollover Parameters")
+    S = float(st.sidebar.slider("Initial Spot Price S₀", 1, 1000, 100))
+    qty = int(st.sidebar.slider("Quantity to Hedge (barrels)", 1, 1000, 100))
+    periods = int(st.sidebar.slider("Number of Rollovers (periods)", 1, 10, 3))
+    btn = st.sidebar.button("Generate Random Future Spot Path")
 
     F0_calc = get_future_price_spot_costcarry(S0, r, storage, div_yield, T)
    
@@ -351,10 +343,9 @@ if section == "Basics & Payoffs":
 
 
 
-
+    st.write("#### 🔹 Daily P&L Table and Graph (with F₀ and Quantity)")
     s1, s2 = st.columns(2)
     with s1:
-        st.subheader("🔹 Daily P&L Table (with F₀ and Quantity)")
         st.dataframe(df_mtm, use_container_width=True)
         st.write(f"**Total P&L after {days} days:** {cumulative_pl[-1]:.2f}  \nThis is also the economic value of the future contract at the end of day {days}.")
     with s2:
@@ -892,22 +883,25 @@ elif section == "Stock and Commodity Futures":
     st.subheader("4️⃣ Basis Risk")
 
     st.markdown("""
-    **Basis** is the difference between the **spot price** of the asset being hedged and the **futures price** of the contract used:
+    So far our discussion has assumed **perfect hedging** with futures contracts. 
+    In reality there are several issues that might arise: 
+
+    1. The asset being hedged may differ from the futures contract.
+    2. The agents might not know the exact timing of selling/buying the underlying.
+    3. The futures contract may expire before the underlying transaction occurs.
+
+    These uncertainties are often all combined in the term **Basis risk**, which is defined as the difference between the **spot price** of the asset being hedged and the **futures price** of the contract used:
 
     $$
     Basis = S(t) - F(t)
     $$
 
-    Even with a futures hedge, **basis risk** remains because:
-
-    1. Spot and futures prices do not move identically.  
-    2. Basis only converges to zero at contract maturity.  
-    3. Cross-hedging introduces additional mismatch.
     """)
 
     # --------------------------
     # Slider Inputs for Simulation
     # --------------------------
+    st.write("In order to illustrate basis risk, we simulate spot and futures prices over time with imperfect correlation. Use commodity and basis risk parameters in the sidebar.")
     F0_basis = get_future_price_spot_costcarry(S0, r, storage, conv_yield, T)
     S0_slider = S0
     F0_slider = F0_basis
@@ -936,8 +930,8 @@ elif section == "Stock and Commodity Futures":
     })
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### 🔄 Simulate Spot & Futures Prices Over Time")
-        st.dataframe(basis_df)
+        st.markdown("### 🔄 Simulate Basis Over Time")
+        st.dataframe(basis_df, hide_index=True)
     with col2:
         st.markdown("### 📈 Spot, Futures, and Basis Over Time")
 
@@ -960,25 +954,27 @@ elif section == "Stock and Commodity Futures":
 
         st.pyplot(fig)
 
+    st.write("With the table and graph we can see how basis risk evolves over time due to imperfect correlation between spot and futures prices, eventually converging at maturity.")
+
     # --------------------------
     # Numerical Example
     # --------------------------
-    st.markdown("### Example: Calculating Basis and Effective Price with Hedge")
+    st.markdown("### Example: Calculating Basis")
 
     S1, F1 = spot_prices[0], fut_prices[0]
     S2, F2 = spot_prices[-1], fut_prices[-1]
     b1, b2 = S1-F1, S2-F2
     effective_price = S2 + (F1-F2)
-
-    st.markdown(f"""
-    - Basis at initiation: **b₁ = {b1:.2f}**  
-    - Basis at close-out: **b₂ = {b2:.2f}**  
-
-    **Effective price with hedge:**  
-    $$
-    Effective \ Price = S_2 + (F_1 - F_2) = {S2:.2f} + ({F1:.2f} - {F2:.2f}) = {effective_price:.2f}
-    $$
-
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"""
+        **At Initiation (Day 1):**  
+        - Spot Price S₁ = {S1:.2f}  
+        - Futures Price F₁ = {F1:.2f}  
+        - Basis b₁ = S₁ - F₁ = {b1:.2f}  
+        """)
+    with col2:
+        st.markdown(f"""
     **Takeaways:**  
     - Basis fluctuates due to imperfect correlation of spot and futures.  
     - Short hedge benefits if basis **strengthens** (b₂ ↑), worsens if basis **weakens** (b₂ ↓).  
@@ -991,91 +987,89 @@ elif section == "Stock and Commodity Futures":
     # SECTION 5 — ROLLOVERS (Stack & Roll)
     # =====================================================
     st.subheader("5️⃣ Rollovers and Maturity Mismatch")
-
     st.write("""
-    Hedgers often face **maturity mismatch**: the exposure lasts longer than the futures contract. To maintain the hedge, they **roll over** the contract — closing the near-term contract and opening a new one further out.  
-    This is sometimes called **stack and roll**:""")
+    When the exposure (e.g., selling oil in 14 months) lasts **longer** than the available futures contract maturities, the hedger must **roll** the hedge forward.
+    This is known as **stack and roll**:""")
+    colA, colB = st.columns(2)
+    with colA:
+        st.write("""
+    - Short the nearest liquid futures contract  
+    - Close it when it expires or becomes illiquid""")
+    with colB:
+        st.write("""  
+    - Open a later-dated contract  
+    - Repeat until the date when the underlying is bought/sold
+    """)
 
+    # -------------------------
+    # Initialize
+    # -------------------------
+    rng = np.random.default_rng()
+    current_spot = S
+    records = []
+
+    for y in range(1, periods + 1):
+        # Open futures price using no-arbitrage formula with storage and convenience yield
+        F_open = current_spot * np.exp((r + storage - conv_yield) * 1)  # 1-year futures
+
+        # Random closing future price (simulate market movement)
+        F_close = F_open * (1 + rng.normal(0, 0.01))  # ~1% random annual move
+        gain = F_open - F_close
+
+        records.append([y, round(current_spot, 2), round(F_open, 2), round(F_close, 2), round(gain, 2)])
+
+        # Update spot for next rollover (simulate market movement)
+        current_spot = F_close * (1 + rng.normal(0, 0.01))
+
+
+   # -------------------------
+    # Build DataFrame
+    # -------------------------
+    df = pd.DataFrame(records, columns=["Year", "Spot Start", "Open Future Price", "Close Future Price", "Gain/Rollover"])
+
+    # Add a summary row with total rollover costs
+    total_gain_per_barrel = df["Gain/Rollover"].sum()
+    df.loc[len(df)] = ["Total", np.nan, np.nan, np.nan, round(total_gain_per_barrel, 2)]
+
+    # -------------------------
+    # Display table
+    # -------------------------
+    st.markdown("### Annual Rolling Hedge Table")
+    st.write("This table summarizes the annual rollovers of the futures hedge over the specified periods for only one barrel. The total gain/loss from rolling the futures contracts is shown in the last row.")
+
+    # Select numeric columns except Year
+    numeric_cols = df.columns.drop("Year")
+
+    # Style numeric columns with 2 decimals
+    styled_df = df.style.format({col: "{:.2f}" for col in numeric_cols})
+
+    # Display without index
+    st.dataframe(styled_df, use_container_width=True, hide_index=True)
+
+
+
+   # -------------------------
+    # Summary
+    # -------------------------
+    total_gain_per_barrel = df.loc[df["Year"] != "Total", "Gain/Rollover"].sum()
+    total_gain_dollars = total_gain_per_barrel * qty
+    avg_gain_per_year = df.loc[df["Year"] != "Total", "Gain/Rollover"].mean()
+    min_gain = df.loc[df["Year"] != "Total", "Gain/Rollover"].min()
+    max_gain = df.loc[df["Year"] != "Total", "Gain/Rollover"].max()
+    final_spot = df.loc[df.index[-2], "Close Future Price"]  # last real row
+
+    st.markdown("### 📊 Hedge Summary (At a Glance)")
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### 🔹 Rollover Process")
-        st.write("""
-        1. Enter short futures contract 1  
-        2. Close out contract 1 → enter contract 2  
-        3. Repeat until last contract covering exposure  
-        4. Close final contract at the end of the hedging horizon
-        """)
-
-        st.markdown("""
-        **Key Takeaways:**
-        - Futures may not fully compensate if **futures < spot** at initiation  
-        - Rolling contracts incurs **transaction costs and basis risk**  
-        - Hedgers must monitor liquidity and timing carefully
-        """)
-
-        st.markdown("""
-        **Intuition:**  
-        - Rolling exposes the hedger to **price changes between contracts**  
-        - Transaction costs and small differences accumulate over multiple rollovers  
-        - Basis risk persists; careful monitoring is required
-        """)
-
+        st.write(f"- **Initial Spot Price S₀:** ${S:.2f}")
+        st.write(f"- Total Gain/Loss per Barrel: ${total_gain_per_barrel:.2f}")
+        st.write(f"- **Total Gain/Loss for {qty:,} barrels:** ${total_gain_dollars:,.2f}")
     with col2:
-        st.markdown("### Example: Rolling an Oil Hedge Forward (Static + Simulated)")
-
-        # --------------------------
-        # Static historical example
-        # --------------------------
-        static_df = pd.DataFrame({
-            "Month": ["Oct 2011", "Mar 2012", "Jul 2012"],
-            "Spot Price": [69.0, None, None],  # only initial spot
-            "Short Price": [68.20, 67.00, 66.30],
-            "Close Price": [67.40, 66.50, 65.90],
-            "Profit per Barrel": [0.80, 0.50, 0.40],
-            "Type": ["Historical"] * 3
-        })
-
-        # --------------------------
-        # Simulated rollover example
-        # --------------------------
-        np.random.seed(42)
-
-        # Simulated spot changes
-        spot_changes_roll = np.random.normal(0, vol_spot, roll_months).cumsum()
-
-        # Set futures start equal to last simulated spot
-        fut_start = float(spot_prices[-1])
-
-        # Simulated futures curve
-        fut_prices_roll = fut_start + np.random.normal(0, vol_fut, roll_months).cumsum()
-
-        pnl_roll = fut_prices_roll - fut_start
-
-        sim_df = pd.DataFrame({
-            "Month": [f"Sim Month {i}" for i in range(1, roll_months + 1)],
-            "Spot Price": np.round(spot_prices[-1] + spot_changes_roll, 2),
-            "Short Price": [round(fut_start, 2)] * roll_months,
-            "Close Price": np.round(fut_prices_roll, 2),
-            "Profit per Barrel": np.round(pnl_roll, 2),
-            "Type": ["Simulated"] * roll_months
-        })
-
-        # --------------------------
-        # Combine tables
-        # --------------------------
-        combined_df = pd.concat([static_df, sim_df], ignore_index=True)
-
-        # --------------------------
-        # Display clean table
-        # --------------------------
-        st.write("**Rolling Hedge Table:**")
-
-        # Streamlit cannot display `.style` objects inside st.dataframe — use st.dataframe directly
-        st.dataframe(combined_df, use_container_width=True)
+        st.write(f"Final Spot Price after {periods} rollovers (at maturity equals Future Price): ${final_spot:.2f}")
+        st.write(f"Average Gain/Loss per Year: ${avg_gain_per_year:.2f}")
+        st.write(f"**Total number of rollovers:** {periods-1}")
 
 
-    
-   
 
     st.markdown("---")
 
@@ -1214,4 +1208,3 @@ elif section == "Index & VIX Futures":
         VIX futures often trade at a **premium** (contango) or **discount** (backwardation)  
         depending on market stress levels.
     """)
-

@@ -62,6 +62,8 @@ elif section == "Analytics":
     N = st.sidebar.slider("Number of Years (Maturity)", 1, 50, 5, key="analytics_N")
     r_percent = st.sidebar.slider("Yield / YTM (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.5, key="analytics_r_coupon")   
     r = r_percent / 100
+    delta_y_percent = st.sidebar.slider("Interest Rate Change (%)", min_value=-5.0, max_value=5.0, value=2.0, step=0.5)
+    delta_y_ex = delta_y_percent / 100
 
 
 
@@ -89,11 +91,6 @@ def get_latest_yf_curve():
     return df
 
 curve_df = get_latest_yf_curve()
-
-
-
-
-
 
 
 
@@ -153,11 +150,18 @@ if section == "Zero-Coupon Bond":
 
     with col2:
         st.subheader("Price vs Maturity (Annual Compounding)")
+
         fig, ax = plt.subplots()
         ax.plot(T_values, zcb_prices_vs_T)
+
+        # --- Highlight the price at the selected maturity T ---
+        zcb_price_T = F / (1 + r_zcb)**T
+        ax.plot(T, zcb_price_T, 'o', color='orange', markersize=8)
+
         ax.set_xlabel("Maturity (years)")
-        ax.set_ylabel("Bond Price ($)")
+        ax.set_ylabel("Bond Price ($)") 
         ax.set_title("Zero-Coupon Bond Price vs Maturity")
+
         st.pyplot(fig)
 
     st.markdown("---")
@@ -198,6 +202,7 @@ if section == "Zero-Coupon Bond":
         ax_disc.plot(T_values, zcb_prices_disc_vs_T)
         ax_disc.set_xlabel("Maturity (years)")
         ax_disc.set_ylabel("Bond Price ($)")
+        ax_disc.plot(T, ZCB_price_disc, 'o', color='orange', markersize=8)
         ax_disc.set_title(f"ZCB Price vs Maturity ({freq} Compounding)")
         st.pyplot(fig_disc)
 
@@ -238,6 +243,7 @@ if section == "Zero-Coupon Bond":
         ax_cc.plot(T_values, zcb_prices_vs_T, linestyle="--", label="Annual")
         ax_cc.set_xlabel("Maturity (years)")
         ax_cc.set_ylabel("Bond Price ($)")
+        ax_cc.plot(T, ZCB_price_cont, 'o', color='orange', markersize=8)
         ax_cc.set_title("Price vs Maturity: Annual vs Continuous")
         ax_cc.legend()
         st.pyplot(fig_cc)
@@ -322,7 +328,7 @@ elif section == "Coupon-Paying Bond":
     df = pd.concat([df, pd.DataFrame({
         "Year": ["Total PV"],
         "Coupon": [""],
-        "**Total CF**": [""],
+        "Total CF": [""],
         "PV (annual)": [df["PV (annual)"].sum()]
     })], ignore_index=True)
 
@@ -590,13 +596,7 @@ elif section == "Analytics":
     C_ex = C
     N_ex = N
     r_ex = r
-
-    # Interest rate shift slider (new input)
  
-    delta_y_percent = st.sidebar.slider("Interest Rate Change (%)", min_value=-5.0, max_value=5.0, value=2.0, step=0.5)
-    delta_y_ex = delta_y_percent / 100
-
-
     # Calculate cash flows and price
     cash_flows_ex = [C_ex]*N_ex
     cash_flows_ex[-1] += F_ex
@@ -646,15 +646,38 @@ elif section == "Analytics":
 
     # Price vs yield change plot
     with col2:
-        delta_y_ex_vals = np.linspace(-0.05, 0.05, 100)
-        prices_exact_plot = [sum(cf / (1+r_ex+dy)**(i+1) for i, cf in enumerate(cash_flows_ex)) for dy in delta_y_ex_vals]
-        prices_duration_plot = [price_ex*(1 - modified_ex*dy) for dy in delta_y_ex_vals]
 
+        # ------------------------
+        # Calculate bond prices
+        # ------------------------
+        delta_y_ex_vals = np.linspace(-0.05, 0.05, 100)
+        prices_exact_plot = [
+            sum(cf / (1 + r_ex + dy)**(i+1) for i, cf in enumerate(cash_flows_ex)) 
+            for dy in delta_y_ex_vals
+        ]
+        prices_duration_plot = [
+            price_ex * (1 - modified_ex * dy) 
+            for dy in delta_y_ex_vals
+        ]
+
+        # Interpolate to find the price at the selected yield change
+        price_selected = np.interp(delta_y_ex, delta_y_ex_vals, prices_duration_plot)
+
+        # ------------------------
+        # Plot
+        # ------------------------
         fig, ax = plt.subplots()
         ax.plot(delta_y_ex_vals*100, prices_exact_plot, label="Exact Price")
         ax.plot(delta_y_ex_vals*100, prices_duration_plot, linestyle="--", label="Duration Approx.")
+
+        # Highlight the selected point
+        ax.plot(delta_y_percent, price_selected, 'o', color='orange', markersize=8,
+                label=f"P(Δy={delta_y_percent:.2f}%) = {price_selected:.2f}")
+
         ax.set_xlabel("Yield Change (%)")
         ax.set_ylabel("Bond Price ($)")
         ax.set_title("Price Change vs Yield Shift")
+        ax.grid(alpha=0.25)
         ax.legend()
         st.pyplot(fig)
+
