@@ -34,7 +34,8 @@ section = st.selectbox(
         "Basics & Payoffs",
         "Stock and Commodity Futures",
         "FX & Interest Rate Futures",
-        "Index & VIX Futures"
+        "Index & VIX Futures",
+        "Arbitrage Strategies"
     ])
 # =======================================
 # SHARED FUNCTIONS
@@ -117,10 +118,18 @@ elif section == "Stock and Commodity Futures":
 
 
 elif section == "FX & Interest Rate Futures":
-    st.sidebar.header("FX & Interest Rate Futures Inputs")
+    st.sidebar.header("FX Input Parameters")
+
+    S0_fx = st.sidebar.slider("Spot rate S₀ (USD per 1 foreign unit)", 1, 1000, 100)
+    r_usd = st.sidebar.slider("USD risk-free rate r_USD (%)", 0.0, 20.0, 5.0) / 100
+    r_for = st.sidebar.slider("Foreign risk-free rate r_foreign (%)", 0.0, 20.0, 3.0) / 100
+    T_fx = st.sidebar.slider("Maturity T (years)", 0.01, 5.0, 1.0)
 
 elif section == "Index & VIX Futures":
     st.sidebar.header("Index & VIX Futures Inputs")
+
+elif section == "Arbitrage Strategies": 
+    st.sidebar.header("Abritrage Inputs")
 
 
 ## =======================================
@@ -1120,21 +1129,245 @@ elif section == "Stock and Commodity Futures":
 # 3️⃣ FX & INTEREST RATE FUTURES
 # =======================================
 
+
 elif section == "FX & Interest Rate Futures":
-    st.header("🌍 FX Futures")
-    st.latex(r"""
-    F_0 = S_0 \cdot e^{(r_{domestic} - r_{foreign})T}
+
+    # ============================================================
+    # 🌍 FX FUTURES — INTRODUCTION
+    # ============================================================
+    st.header("🌍 FX Futures & Forward Pricing")
+
+    st.write("""
+    Foreign exchange (FX) futures allow traders and institutions to buy or sell a foreign 
+    currency at a predetermined price on a future date. Just like other futures contracts, 
+    FX futures are standardized, exchange-traded, marked-to-market daily, and carry very 
+    low counterparty risk.
+
+    What makes FX futures unique is that *a currency itself generates a known yield* — the 
+    risk-free interest rate of that country. This leads to one of the cleanest applications 
+    of the cost-of-carry model: **Covered Interest Rate Parity (CIP)**.
     """)
 
-    st.sidebar.header("FX Futures Inputs")
-    S0_fx = st.sidebar.number_input("Spot FX Rate", 0.1, 10.0, 1.10)
-    r_dom = st.sidebar.slider("Domestic Rate (%)", 0.0, 15.0, 5.0) / 100
-    r_for = st.sidebar.slider("Foreign Rate (%)", 0.0, 15.0, 3.0) / 100
-    T_fx = st.sidebar.slider("Maturity (years)", 0.1, 5.0, 1.0)
+    st.markdown("---")
 
-    FX_future = S0_fx * np.exp((r_dom - r_for) * T_fx)
+    # ============================================================
+    # 🔹 KEY CHARACTERISTICS
+    # ============================================================
+    st.subheader("🔹 Key Characteristics of FX Futures")
+    colA, colB = st.columns(2)
+    with colA: 
+        st.write("""
+        - **Standardized**: Exchanges (CME, ICE) define contract size and delivery dates.  
+        - **Two sides**:  
+        - Long → agrees to buy foreign currency  
+        - Short → agrees to sell foreign currency  
+        - **Daily mark-to-market**: Gains/losses settled every day.""")
+    with colB:
+        st.write("""  
+        - **Zero initial value**: Futures always start with value = 0.  
+        - **Low credit risk**: Clearinghouse guarantees performance.  
+        - **Cash or physical settlement**: Depends on the contract.  
+        - **Highly liquid**: Ideal for hedging, arbitrage, and speculation.
+        - "**Convention note:** In this dashboard, we quote FX rates as _USD per 1 unit of foreign currency_ — e.g. 0.62 USD/AUD means 1 Australian dollar = 0.62 US dollars.  
+        """)
 
-    st.write(f"**FX Futures Price:** {FX_future:.4f}")
+    st.markdown("---")
+
+    # ============================================================
+    # 🌟 HOW FX FUTURES ARE PRICED — NO-ARBITRAGE DERIVATION
+    # ============================================================
+    st.subheader("📘 How the FX Forward/Futures Formula Is Derived")
+
+    st.write("""
+    To price FX forwards or futures, we use **the same no-arbitrage replication logic** 
+    used for stock and commodity futures. But here, the key insight is:
+
+    #### Holding 1 unit of foreign currency earns the **foreign risk-free rate**
+    So the foreign currency behaves like an investment asset with a *known yield* (just like a dividend-paying asset):  
+    the foreign interest rate \( r_f \). We now compare two strategies that must deliver the **same number of USD at time T**.
+    """)
+
+    col1, col2 = st.columns(2)
+
+    # ----------------------------------------
+    # Strategy A — Invest in USD
+    # ----------------------------------------
+    with col1:
+        st.markdown("""
+        ### **Strategy A — Invest in USD Today**
+
+        1. Start with **1 USD**  
+        2. Invest it at the U.S. risk-free rate \( r_{\text{USD}} \)  
+        3. The investment grows to:
+        """)
+
+        st.latex(r"1 \cdot e^{\, r_{\text{USD}} \, *T}")
+
+
+    # ----------------------------------------
+    # Strategy B — Convert & Hedge
+    # ----------------------------------------
+    with col2:
+        st.markdown("""
+        ### **Strategy B — Convert to Foreign Currency & Hedge**
+
+        1. Convert **1 USD** into foreign currency: 1/S_0  
+        (Where S_0 is the exchange rate expressed in USD)
+        """) 
+
+        st.markdown("2. Invest this at the foreign rate \( r_f \)")
+
+        st.markdown("3. At time \(T\), you have:")
+        st.latex(r"\frac{1}{S_0} e^{r_{\text{f}} *T}")
+
+        st.markdown("4. Lock in a forward to convert foreign currency to USD at \(F_0\)")
+
+        st.markdown("5. Dollar value at \(T\) becomes:")
+        st.latex(r"F_0 \cdot \frac{1}{S_0} e^{r_{\text{f}} *T}")
+
+
+    # ----------------------------------------
+    # Equating both strategies → CIP
+    # ----------------------------------------
+    st.write("""
+    In the absence of arbitrage, both strategies must yield **the same USD amount at T**:
+    """)
+
+    st.latex(r"e^{r_{\text{USD}} T} = F_0 \cdot \frac{1}{S_0} e^{r_{\text{for}} T}")
+
+    st.write("Solving for the fair forward price \(F_0\):")
+
+    st.latex(r"F_0 = S_0 \, e^{(r_{\text{USD}} - r_{\text{for}}) T}")
+
+    st.write("This is the famous **Covered Interest Rate Parity (CIP)** condition.")
+
+    st.markdown("---")
+
+    # ============================================================
+    # 📈 FX Forward Price (CIP) — Full Interactive Explanation
+    # ============================================================
+
+    st.subheader("📘 FX Forward Pricing Using Covered Interest Parity (CIP)")
+
+
+    # Forward based on CIP
+    F0_val = S0_fx * np.exp((r_usd - r_for) * T_fx)
+
+    # Columns for layout
+    col1, col2 = st.columns([1, 1.3])
+
+    # ------------------------------------------------------------
+    # LEFT COLUMN — EXPLANATION + NUMERICAL TABLE
+    # ------------------------------------------------------------
+    with col1:
+
+        st.markdown("#### 🌍 **Covered Interest Parity (CIP)**")
+
+        st.write(r"""
+    Covered Interest Parity is the **no-arbitrage condition** linking interest rates, spot FX rates,
+    and forward FX rates.
+
+    It says that hedged returns must be **equal across currencies**.  
+    If you:
+
+    1️⃣ Invest in **USD** at rate \( r_{\text{USD}} \)
+
+    2️⃣ OR convert to foreign currency, invest at \( r_{\text{for}} \),  
+    and lock in the forward rate \( F_0 \)
+
+    …you must end up with the **same USD amount at maturity**.
+
+    Otherwise an arbitrage opportunity would exist.
+
+    Mathematically:
+
+    \[
+    F_0 = S_0 \, e^{(r_{\text{USD}} - r_{\text{for}}) T}
+    \]
+
+    This is the fair **FX forward price** under no arbitrage.
+    """)
+
+    # ------------------------------------------------------------
+    # RIGHT COLUMN — FORWARD PRICE VS MATURITY GRAPH
+    # ------------------------------------------------------------
+    with col2:
+
+        st.markdown("#### 📈 **Forward Price vs. Maturity (CIP Forward Curve)**")
+
+        T_range = np.linspace(0.01, 5.0, 300)
+        F_curve = S0_fx * np.exp((r_usd - r_for) * T_range)
+
+        fig, ax = plt.subplots()
+        ax.plot(T_range, F_curve)
+        ax.set_xlabel("Maturity T (years)")
+        ax.set_ylabel("Forward Price F₀(T)")
+        ax.set_title("Forward Curve Implied by CIP")
+        ax.scatter([T_fx],[F0_val], s=8**2, color='orange', marker='o', zorder=5)
+
+
+        st.pyplot(fig)
+
+    st.markdown("#### 🔢 **Numerical Example**")
+
+    df_example = pd.DataFrame({
+            "Variable": ["Spot rate S₀", "USD rate r_USD", "Foreign rate r_foreign", "Maturity T", "Forward price F₀"],
+            "Value": [
+                f"{S0_fx:.2f} USD/foreign",
+                f"{r_usd*100:.2f} %",
+                f"{r_for*100:.2f} %",
+                f"{T_fx:.2f} years",
+                f"{F0_val:.2f} USD/foreign"
+            ]
+        })
+    st.dataframe(df_example, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+ 
+    @st.cache_data
+    def get_fx_spot_rates():
+        # FX pairs
+        pairs = ["EURUSD=X", "GBPUSD=X", "AUDUSD=X", "USDJPY=X", "USDCNY=X"]
+        
+        # Download all tickers at once
+        df_raw = yf.download(tickers=" ".join(pairs), period="2d")["Close"]
+        if df_raw.empty:
+            return pd.DataFrame(columns=["Currency Pair", "Spot Rate (USD per foreign unit)"])
+        
+        latest_row = df_raw.tail(1)
+        data = {}
+        
+        for p in pairs:
+            if p in latest_row:
+                spot = latest_row[p].values[0]
+                
+                # Determine if inversion is needed
+                if p.startswith("USD"):  # USDXXX → invert to get USD per foreign unit
+                    spot = 1 / spot
+                # XXXUSD → already USD per foreign unit, no change
+                
+                data[p] = spot
+            else:
+                data[p] = None  # placeholder if no data
+        
+        df_spot = pd.DataFrame({
+            "Currency Pair": [p.replace("=X","") for p in pairs],
+            "Spot Rate (USD per foreign unit)": [data[p] for p in pairs]
+        })
+        
+        return df_spot  # <---- RETURN HERE
+
+    # Fetch FX spot rates
+    df_spot = get_fx_spot_rates()
+
+    st.markdown("### 🔎 Reference FX Spot Rates (USD per 1 foreign unit)")
+    st.dataframe(df_spot, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+
+    
 
     # Interest Rate Futures
     st.header("📉 Interest Rate Futures (Eurodollar / Treasury)")
@@ -1208,3 +1441,6 @@ elif section == "Index & VIX Futures":
         VIX futures often trade at a **premium** (contango) or **discount** (backwardation)  
         depending on market stress levels.
     """)
+
+elif section == "Arbitrage Strategies":
+    st.header("Arbitrage Section")
