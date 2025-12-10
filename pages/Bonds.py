@@ -506,6 +506,10 @@ elif section == "Analytics":
             "- **Zero-coupon bonds** have durations equal to their maturity.\n"
             "- This is because no interest is being paid before maturity, so all cash flows occur at the end."
         )
+        st.markdown("\n\n")
+
+        st.write("Hence, duration provides a useful measure of interest rate risk (change sensitivity) and average time to cash flows for bonds.\n\n"
+             "At the end of the page we will cover one concrete example illustrating price changes with interest rate shifts.")
 
     with col2:
         fig, ax = plt.subplots()
@@ -514,10 +518,7 @@ elif section == "Analytics":
         ax.set_ylabel("Duration (Years)")
         ax.set_title("Duration vs Maturity (Approximation)")
         st.pyplot(fig)
-
-    st.write("Hence, duration provides a useful measure of interest rate risk (change sensitivity) and average time to cash flows for bonds.\n\n"
-             "At the end of the page we will cover one concrete example illustrating price changes with interest rate shifts."
-                )
+                
     st.markdown("---")
 
 

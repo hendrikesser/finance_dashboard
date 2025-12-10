@@ -43,21 +43,25 @@ div[data-baseweb="select"] > div {
 st.markdown("<div class='big-title'>📊 Financial Dashboard </div>", unsafe_allow_html=True)
 
 st.write("""
-Welcome to the **Financial Dashboard**, an interactive learning platform covering the  
-four major building blocks of modern financial markets:
+Welcome to the **Financial Dashboard**, an interactive learning platform covering the four major building blocks of modern financial markets:
 
-### **💵 Bonds • 📈 Futures • 📘 Options • 🔄 Swaps**
+### **💵 Bonds • 📈 Futures • 📘 Options • 🔄 Swaps**""")
+st.write("Each section combines:")
 
-Each section combines:
+col1, col2 = st.columns(2)
+with col1: 
+    st.write("""
 - Intuitive explanations  
 - Interactive simulations  
-- Payoff diagrams  
+- Payoff diagrams""")
+with col2: 
+    st.write("""
 - Pricing models  
 - Real numerical examples  
-- Hedging applications  
+- Hedging applications""")
 
-Use the sidebar to navigate between modules.
-""")
+st.write("""
+Use the sidebar to navigate between modules.""")
 
 st.markdown("---")
 
@@ -80,9 +84,8 @@ with col1:
 Understand interest-bearing securities:
 - Zero-coupon & coupon-paying bonds  
 - Yield curves  
-- Duration & convexity  
+- Macauly and Modified Duration 
 - Price–yield dynamics  
-- Callable bonds and embedded options  
 """)
     st.write("➡️ Gain intuition for fixed-income pricing and risk.")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -94,10 +97,9 @@ with col2:
     st.write("""
 Explore the mechanics of futures contracts:
 - Long/short payoffs  
-- Mark-to-market (MtM)  
+- Mark-to-market (MtM), Basis & Rollover Risk
 - Hedging with underlying exposure  
-- Commodity, equity, FX, and interest rate futures  
-- Roll yield & basis  
+- Commodity, equity, FX, interest rate, and VIX futures   
 """)
     st.write("➡️ Ideal starting point to understand linear derivatives.")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -108,12 +110,10 @@ with col3:
     st.subheader("📘 Options")
     st.write("""
 Explore nonlinear derivatives:
-- Calls & puts  
-- Payoff diagrams  
-- Binomial pricing  
-- Black–Scholes model  
+- Calls / puts and Payoff diagrams  
+- Binomial pricing  and Black–Scholes model  
 - Greeks (Delta, Gamma, Vega, Theta, Rho)  
-- Volatility smiles & implied vol  
+- Volatility smiles & implied volatility  
 """)
     st.write("➡️ Perfect for understanding asymmetric payoffs and risk sensitivities.")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -126,9 +126,8 @@ with col4:
 Dive into the world of swaps:
 - Interest rate swaps (IRS)  
 - Fixed vs floating legs  
-- Swap valuation  
-- Forward rates from the yield curve  
-- Hedging interest rate risk  
+- FX Swaps
+- Credit Default Swaps 
 """)
     st.write("➡️ Learn how institutions reshape risk exposures through swaps.")
     st.markdown("</div>", unsafe_allow_html=True)
