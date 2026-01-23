@@ -34,7 +34,7 @@ section = st.selectbox(
         "Basics & Payoffs",
         "Stock and Commodity Futures",
         "FX & Interest Rate Futures",
-        "Index & VIX Futures",
+        "VIX Futures",
         "Arbitrage Strategies"
     ])
 # =======================================
@@ -125,11 +125,38 @@ elif section == "FX & Interest Rate Futures":
     r_for = st.sidebar.slider("Foreign risk-free rate r_foreign (%)", 0.0, 20.0, 3.0) / 100
     T_fx = st.sidebar.slider("Maturity T (years)", 0.01, 5.0, 1.0)
 
-elif section == "Index & VIX Futures":
-    st.sidebar.header("Index & VIX Futures Inputs")
+    st.sidebar.header("Interest Rate Futures Inputs")
+
+    r_short = st.sidebar.slider("Current Short Rate r (annualized, %)", 0.0, 10.0, 4.0) / 100
+    r_long = st.sidebar.slider("Long-term Rate R_L (annualized, %)", 0.0, 10.0, 5.0) / 100
+    T_ir = st.sidebar.slider("Start of Forward Period T1 (years)", 0.25, 5.0, 1.0)
+    tau = st.sidebar.slider("Loan Period τ (years)", 0.25, 2.0, 0.25)
+
+    DV01_port = st.sidebar.number_input("Portfolio DV01 ($)", value=8500)
+    DV01_fut  = st.sidebar.number_input("Futures DV01 ($ per contract)", value=25)
+    shock = st.sidebar.slider("Parallel Rate Shock (bp)", -200, 200, 50)
+
+
 
 elif section == "Arbitrage Strategies": 
-    st.sidebar.header("Abritrage Inputs")
+    st.sidebar.header("🌍 Global Settings")
+    S0 = st.sidebar.number_input("Spot Price (S₀)", 1.0, 10000.0, 100.0)
+    r = st.sidebar.slider("Risk-free rate r (%)", 0.0, 15.0, 5.0) / 100
+    T = st.sidebar.slider("Maturity T (Years)", 0.1, 5.0, 1.0)
+    notional = st.sidebar.number_input("Notional Amount (Units)", 1, 100000, 100)
+    F_mkt_stock = F_mkt_comm =  F_mkt_fx = st.sidebar.number_input("Market Futures (Stock)", 1.0, 15000.0, 110.0)
+
+
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📈 Stock Params")
+    d = st.sidebar.slider("Dividend yield d (%)", 0.0, 10.0, 2.0) / 100
+
+    st.sidebar.subheader("🛢️ Commodity Params")
+    u_c = st.sidebar.slider("Storage Cost u (%)", 0.0, 10.0, 2.0) / 100
+    y_c = st.sidebar.slider("Convenience Yield y (%)", 0.0, 10.0, 1.0) / 100
+
+    st.sidebar.subheader("💱 FX Params")
+    r_f = st.sidebar.slider("Foreign Rate r_f (%)", 0.0, 15.0, 2.0) / 100
 
 
 ## =======================================
@@ -1162,7 +1189,7 @@ elif section == "FX & Interest Rate Futures":
         - **Low credit risk**: Clearinghouse guarantees performance.  
         - **Cash or physical settlement**: Depends on the contract.  
         - **Highly liquid**: Ideal for hedging, arbitrage, and speculation.
-        - "**Convention note:** In this dashboard, we quote FX rates as _USD per 1 unit of foreign currency_ — e.g. 0.62 USD/AUD means 1 Australian dollar = 0.62 US dollars.  
+        - "**Convention note:** In this dashboard, we quote 1 USD per foreign unit; e.g. USD/EUR = 1.10 means 1 EUR = 1.10 USD.
         """)
 
     st.markdown("---")
@@ -1178,7 +1205,7 @@ elif section == "FX & Interest Rate Futures":
 
     #### Holding 1 unit of foreign currency earns the **foreign risk-free rate**
     So the foreign currency behaves like an investment asset with a *known yield* (just like a dividend-paying asset):  
-    the foreign interest rate \( r_f \). We now compare two strategies that must deliver the **same number of USD at time T**.
+    the foreign interest rate. We now compare two strategies that must deliver the **same number of USD at time T**.
     """)
 
     col1, col2 = st.columns(2)
@@ -1191,7 +1218,7 @@ elif section == "FX & Interest Rate Futures":
         ### **Strategy A — Invest in USD Today**
 
         1. Start with **1 USD**  
-        2. Invest it at the U.S. risk-free rate \( r_{\text{USD}} \)  
+        2. Invest it at the U.S. risk-free rate  
         3. The investment grows to:
         """)
 
@@ -1227,11 +1254,11 @@ elif section == "FX & Interest Rate Futures":
     In the absence of arbitrage, both strategies must yield **the same USD amount at T**:
     """)
 
-    st.latex(r"e^{r_{\text{USD}} T} = F_0 \cdot \frac{1}{S_0} e^{r_{\text{for}} T}")
+    st.latex(r"e^{r_{\text{USD}} T} = F_0 \cdot \frac{1}{S_0} e^{r_{\text{FOR}} T}")
 
     st.write("Solving for the fair forward price \(F_0\):")
 
-    st.latex(r"F_0 = S_0 \, e^{(r_{\text{USD}} - r_{\text{for}}) T}")
+    st.latex(r"F_0 = S_0 \, e^{(r_{\text{USD}} - r_{\text{FOR}}) T}")
 
     st.write("This is the famous **Covered Interest Rate Parity (CIP)** condition.")
 
@@ -1264,23 +1291,20 @@ elif section == "FX & Interest Rate Futures":
     It says that hedged returns must be **equal across currencies**.  
     If you:
 
-    1️⃣ Invest in **USD** at rate \( r_{\text{USD}} \)
+    1️⃣ Invest in **USD** 
 
-    2️⃣ OR convert to foreign currency, invest at \( r_{\text{for}} \),  
-    and lock in the forward rate \( F_0 \)
+    2️⃣ OR convert to foreign currency, invest at the foreign rate, and lock in the forward rate \( F_0 \)
 
     …you must end up with the **same USD amount at maturity**.
 
     Otherwise an arbitrage opportunity would exist.
 
-    Mathematically:
+    Mathematically:""")
 
-    \[
-    F_0 = S_0 \, e^{(r_{\text{USD}} - r_{\text{for}}) T}
-    \]
+        st.latex(r"F_0 = S_0 \, e^{(r_{\text{USD}} - r_{\text{FOR}}) T}")
 
-    This is the fair **FX forward price** under no arbitrage.
-    """)
+        st.write("""This is the fair **FX forward price** under no arbitrage.
+        """)
 
     # ------------------------------------------------------------
     # RIGHT COLUMN — FORWARD PRICE VS MATURITY GRAPH
@@ -1366,373 +1390,114 @@ elif section == "FX & Interest Rate Futures":
     # 💵 INTEREST RATE FUTURES SECTION
     # ============================================================
 
-    st.header("💵 Interest Rate Futures (Eurodollar, SOFR)")
+    st.header("💵 Interest Rate Futures")
 
     st.write("""
-    Interest rate futures are among the most widely used derivatives in the world. 
+    Interest rate futures are one of the most widely traded derivatives globally.  
     They allow traders and institutions to **lock in future interest rates**, hedge bond portfolios, 
-    or speculate on monetary policy changes.
+    or speculate on central bank policy changes.
 
-    We now extend the futures pricing framework to **interest rate products**, using:
-
-    - **Forward Rate Agreements (FRAs)**  
-    - **Eurodollar Futures (CME)**  
-    - **SOFR Futures (new benchmark)**  
-    - **Duration-based hedging**  
-
-    We will build the theory step-by-step and provide numerical and graphical intuition throughout.
+    Here, we focus on **Forward Rate Agreements (FRAs)** and **Eurodollar Futures (CME)**.  
+    We will show the calculation step-by-step using the alternative forward rate formula.
     """)
 
     st.markdown("---")
-
-    # ============================================================
-    # 🎯 USER INPUTS: Interest Rate Parameters
-    # ============================================================
-    st.sidebar.header("Interest Rate Futures Inputs")
-
-    r_short = st.sidebar.slider("Current Short Rate r (annualized, %)", 0.0, 10.0, 4.0) / 100
-    r_long = st.sidebar.slider("Long-term Rate R_L (annualized, %)", 0.0, 10.0, 5.0) / 100
-    T_ir = st.sidebar.slider("Start of Forward Period T1 (years)", 0.25, 5.0, 1.0)
-    tau = st.sidebar.slider("Loan Period τ (years)", 0.25, 2.0, 0.25)
 
     notional = 1_000_000   # Standard ED futures notional
 
-    # FRA Forward Rate (simple-compounded)
-    FRA_rate = ( (1 + r_long * (T_ir + tau)) / (1 + r_short * T_ir) - 1 ) / tau
-
-    # Corresponding Eurodollar futures price
-    ED_price = 100 * (1 - FRA_rate)
-
     # ============================================================
-    # 📘 Theory: Forward Rates & FRAs
+    # 📘 FORWARD RATE AGREEMENTS (FRAs)
     # ============================================================
 
     st.subheader("📘 Forward Rate Agreements (FRAs)")
-    col1, col2 = st.columns(2)
-    with col1: 
-        st.write("""
-    #### 🔍 Definition: 
-    A **Forward Rate Agreement (FRA)** is a contract where two parties agree *today* on the 
-    interest rate for a loan that will happen *in the future*.
-
-    Think of it like saying:  
-    “In \(T_1\) years, I want to borrow money for \(T_2\) years.  
-     I don’t know what the interest rate will be then — let’s lock it in now.”
-
-    This agreed-upon interest rate is called the **forward rate**.""")
-
-        st.write("")
-        st.write("")
-        st.latex(r"""
-        \begin{aligned}
-        \text{Where:} \\
-        T_1 &:= \text{start of the future loan} \\
-        T_2 &= T_1 + \tau \quad \text{(end of the loan)} \\
-        \tau &:= \text{length of the loan period} \\
-        P(0,T) &:= \text{price today of a zero-coupon bond paying 1 at time } T \\
-        R_{\text{FRA}} &:= \text{the locked-in forward interest rate}
-        \end{aligned}
-        """)
-
-
-    with col2: 
-        st.write("""
-    #### 🔍 Why do we need a forward rate? 
-
-    Interest rates for loans that **start today** are known.  
-    But interest rates for loans that **start in the future** are uncertain.
-    An FRA removes this uncertainty and guarantees a rate in advance.
-    
-    **Computing Forward rates:**  
-    Financial markets follow a fundamental principle:
-    There should be no arbitrage — no way to make free money.
-
-    To prevent free-money opportunities, borrowing now and borrowing later must be consistent.  
-    This leads to the no-arbitrage formula:
-
-    """)
-
-        st.latex(r"""
-        1 + R_{\text{FRA}} \cdot \tau 
-        = \frac{P(0,T_1)}{P(0,T_2)}
-        """)
-
 
     st.write("""
-    ---
+    #### 🔍 What is an FRA?
 
-    ### 🎯 What your inputs mean
+    A **Forward Rate Agreement (FRA)** is a contract where two parties agree **today** on the interest rate 
+    for a **loan that will happen in the future**.
 
-    Using the sliders on the left, you choose:
-    - the **short-term interest rate** (used to discount to \(T_1\))
-    - the **long-term interest rate** (used to discount to \(T_2\))
-    - when the **future loan starts**
-    - how **long the loan lasts**
-
-    The dashboard uses these to compute the forward rate that makes 
-    borrowing/lending at different times **perfectly consistent**.
-
-    This is the FRA rate.
+    - Suppose you plan to borrow money in **T1 years** for **τ years**.  
+    - You do not know the future interest rate. An FRA **locks in a rate now**.  
+    - This rate is called the **forward rate**.
     """)
 
-    st.write(f"""
-    ### 👉 FRA Rate for the period [{T_ir}, {T_ir+tau}]  
-    **{FRA_rate*100:.3f}%**
-    """)
-
-    st.markdown("---")
-
+    st.write("#### 🔹 Forward Rate Formula:")
 
     st.latex(r"""
-    1 + R_{\text{FRA}} \cdot \tau 
-    = \frac{P(0,T_1)}{P(0,T_2)}
+    R_{t,T,M} = r_{t,M} + \frac{T - t}{M - T} \times (r_{t,M} - r_{t,T})
     """)
 
-    st.write(f"""
-    Using your inputs, the forward interest rate for the period **[{T_ir}, {T_ir+tau}]** equals:
+    # Compute FRA using alternative formula
+    # In your notation: t=0, T=T_ir, M=T_ir + tau
+    t = 0
+    T = T_ir
+    M = T_ir + tau
 
-    ### 👉 FRA Rate:  
-    **{FRA_rate*100:.3f}%**
+    # r_{t,T} = r_short, r_{t,M} = r_long
+    FRA_rate_alt = r_long + (T - t) / (M - T) * (r_long - r_short)
+
+    st.write("#### 🔹 Step-by-step calculation with your inputs:")
+
+    st.latex(rf"""
+    R_{{0,{T:.2f},{M:.2f}}} = {r_long:.4f} + \frac{{{T:.2f} - {t:.2f}}}{{{M:.2f} - {T:.2f}}} \times ({r_long:.4f} - {r_short:.4f})
     """)
+
+    st.write(f"#### 👉 FRA Rate for the period [{T:.2f},{M:.2f}]: **{FRA_rate_alt*100:.3f}%**")
 
     st.markdown("---")
 
     # ============================================================
-    # 📈 Eurodollar Futures
+    # 💵 EURODOLLAR FUTURES
     # ============================================================
 
     st.subheader("💵 Eurodollar Futures (CME)")
 
-    st.write("""
-    Eurodollar Futures (ticker: GE) are 3-month interest rate futures with:
+    colA, colB = st.columns(2)
 
-    - **Notional = USD 1,000,000**
-    - **Quotation = 100 – annualized 3-month LIBOR**
-    - **Marking-to-market daily**
+    with colA:
+        st.write("""
+        Eurodollar Futures (ticker: GE) are **3-month USD interest rate futures**.  
 
-    If the futures price is:
+        Key points:
 
-    \[
-    \text{ED Price} = 100 - r_{\text{FRA}}
-    \]
+        - **Notional = $1,000,000**
+        - **Quoted as 100 – annualized 3-month LIBOR**
+        - **Marked-to-market daily**
 
-    then:
+        If the futures price is:""") 
+        st.latex(r"\text{ED Price} = 100 - R_{\text{FRA}}")
 
-    - Rising interest rates → **ED price falls**  
-    - Falling interest rates → **ED price rises**  
+    with colB:
+        st.write("""
+        then:
 
-    This makes Eurodollar futures behave like **short-term bond prices**.
-    """)
+        - Rising interest rates → **ED price falls**  
+        - Falling interest rates → **ED price rises**  
+        """)
 
-    st.markdown("### 📊 Implied Futures Price")
+    # Compute ED futures price
+        ED_price = 100 * (1 - FRA_rate_alt)
+        st.write("🔹 Eurodollar Futures Price Calculation:")
+        st.write(f"**FRA-Implied Rate: {FRA_rate_alt*100:.3f}%**")
+        st.write(f"**Eurodollar Futures Price: {ED_price:.3f}**")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write(f"#### FRA-Implied Rate: **{FRA_rate*100:.3f}%**")
-        st.write(f"#### Eurodollar Futures Price: **{ED_price:.3f}**")
+    
 
-    with col2:
-        # futures curve graph
-        T_vals = np.linspace(0.1, 5.0, 200)
-        FRA_curve = FRA_rate * np.ones_like(T_vals)
-        ED_curve = 100 * (1 - FRA_curve)
 
-        fig, ax = plt.subplots()
-        ax.plot(T_vals, ED_curve, linewidth=2)
-        ax.scatter([T_ir],[ED_price], color="orange", s=60)
-        ax.set_title("Eurodollar Futures Price vs Maturity (Flat-Term Example)")
-        ax.set_xlabel("Maturity (years)")
-        ax.set_ylabel("Price")
-        ax.grid(alpha=0.2)
-        st.pyplot(fig)
+    
 
-    st.markdown("---")
 
-    # ============================================================
-    # ⚖️ Convexity Bias Between FRAs and Eurodollar Futures
-    # ============================================================
-
-    st.subheader("⚠️ Convexity Bias: FRA vs Futures Rate")
-
-    st.write("""
-    A key result from your lecture slides:
-
-    ### **Eurodollar futures overstate the true forward rate**  
-    because they are marked-to-market daily and thus correlated with interest rate changes.
-
-    This produces a **convexity adjustment**:
-
-    \[
-    r_{\text{futures}} 
-    \approx r_{\text{FRA}} + \frac{1}{2}\sigma^2 T_1 T_2
-    \]
-
-    Where  
-    - \( \sigma \) is the volatility of short rates  
-    - \(T_1\) is the start of the underlying loan  
-    - \(T_2 = T_1 + \tau\)  
-    """)
-
-    sigma = st.sidebar.slider("Short Rate Volatility σ", 0.00, 0.05, 0.01)
-
-    conv_adj = 0.5 * sigma**2 * T_ir * (T_ir + tau)
-    futures_rate_adj = FRA_rate + conv_adj
-    ED_price_adj = 100 * (1 - futures_rate_adj)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write(f"### Convexity Adjustment: **{conv_adj*10000:.2f} bp**")
-        st.write(f"### Futures-Implied Rate: **{futures_rate_adj*100:.3f}%**")
-    with col2:
-        st.write(f"### Adjusted ED Futures Price: **{ED_price_adj:.3f}**")
-
-    st.markdown("---")
-
-    # ============================================================
-    # 🎯 Hedging with Interest Rate Futures (Duration-Based)
-    # ============================================================
-
-    st.subheader("🎯 Hedging Interest Rate Risk Using Futures")
-
-    st.write("""
-    To hedge a bond or fixed-income portfolio using futures, we use 
-    the **duration-based hedge ratio**:
-    """)
-
-    st.latex(r"""
-    N = \frac{DV01_{\text{Portfolio}}}{DV01_{\text{Futures}}}
-    """)
-
-    st.write("""
-    Where:
-
-    - DV01 measures the price sensitivity to a 1 bp shift  
-    - Futures DV01 is based on the CTD (cheapest-to-deliver) bond  
-    """)
-
-    # user inputs
-    DV01_port = st.sidebar.number_input("Portfolio DV01 ($)", value=8500)
-    DV01_fut  = st.sidebar.number_input("Futures DV01 ($ per contract)", value=25)
-
-    N_hedge = DV01_port / DV01_fut
-
-    st.write(f"""
-    ### 📌 Required Hedge Size  
-    To immunize your portfolio, you would short:
-
-    ### 👉 **{N_hedge:.1f} futures contracts**
-    """)
-
-    st.markdown("---")
-
-    # ============================================================
-    # 📊 Sensitivity Analysis: Rate Shock P&L
-    # ============================================================
-
-    st.subheader("📈 Rate Shock P&L (Hedged vs Unhedged)")
-
-    shock = st.sidebar.slider("Parallel Rate Shock (bp)", -200, 200, 50)
-
-    P_unhedged = -DV01_port * shock
-    P_hedged = -DV01_port * shock + N_hedge * DV01_fut * shock
-
-    df_shock = pd.DataFrame({
-        "Scenario": ["Unhedged", "Hedged"],
-        "P&L ($)": [P_unhedged, P_hedged]
-    })
-
-    st.dataframe(df_shock, hide_index=True, use_container_width=True)
-
-    fig, ax = plt.subplots()
-    ax.bar(df_shock["Scenario"], df_shock["P&L ($)"])
-    ax.axhline(0, color="black", linewidth=1)
-    ax.set_title("P&L Under Rate Shock")
-    ax.grid(alpha=0.2)
-
-    st.pyplot(fig)
-
-    st.markdown("""
-    ### ✔️ Takeaways
-    - Without futures → portfolio loses DV01 × shock  
-    - With futures → P&L largely neutralized  
-    - Hedge improves stability but may require fine-tuning for key-rate exposure  
-    """)
 
         
 
 
 
-
-
-
-
-
-
-
-
-
-
 # =======================================
-# 4️⃣ INDEX & VIX FUTURES
-# ======================================
+# 4️⃣  VIX FUTURES
+# =======================================
 
-elif section == "Index & VIX Futures":
-
-    # ============================================================
-    # 📈 INDEX FUTURES
-    # ============================================================
-    st.header("📈 Index Futures")
-
-    st.write("""
-    Equity index futures (e.g., S&P 500, NASDAQ, EuroStoxx) allow traders to 
-    gain exposure to a stock index without buying individual shares.
-
-    The pricing follows the **cost-of-carry model**, which adjusts for interest earned 
-    and dividends not received when holding the futures instead of the index.
-    """)
-
-    st.latex(r"""
-    F_0 = S_0 \, e^{(r - d)T}
-    """)
-
-    st.write(r"""
-    Where:  
-    - \(S_0\) = current index level  
-    - \(r\) = risk-free rate  
-    - \(d\) = dividend yield of the index  
-    - \(T\) = time to maturity  
-    """)
-
-    st.markdown("---")
-
-    # USER INPUTS
-    st.sidebar.header("Index Futures Inputs")
-
-    S0_idx = st.sidebar.number_input("Index Spot Level (S₀)", 100, 10000, 4300)
-    div_yield = st.sidebar.slider("Dividend Yield d (%)", 0.0, 5.0, 1.5) / 100
-    r_idx = st.sidebar.slider("Risk-free Rate r (%)", 0.0, 10.0, 4.0) / 100
-    T_idx = st.sidebar.slider("Maturity T (years)", 0.1, 3.0, 1.0)
-
-    # Pricing function
-    F_idx = S0_idx * np.exp((r_idx - div_yield) * T_idx)
-
-    st.subheader("📌 Futures Price")
-    st.write(f"### **Index Futures Price:** {F_idx:,.2f}")
-
-    # Plot futures price vs maturity
-    T_grid = np.linspace(0.01, 3.0, 200)
-    F_curve = S0_idx * np.exp((r_idx - div_yield) * T_grid)
-
-    fig, ax = plt.subplots()
-    ax.plot(T_grid, F_curve, linewidth=2)
-    ax.scatter(T_idx, F_idx, s=60)
-    ax.set_title("Index Futures Price vs Maturity")
-    ax.set_xlabel("Maturity T (years)")
-    ax.set_ylabel("Futures Price")
-    ax.grid(alpha=0.2)
-    st.pyplot(fig)
-
-    st.markdown("---")
+elif section == "VIX Futures":
 
     # ============================================================
     # ⚡ VIX FUTURES
@@ -1740,71 +1505,195 @@ elif section == "Index & VIX Futures":
     st.header("⚡ VIX Futures")
 
     st.write("""
-    The VIX index measures the **market's 30-day expected volatility** of the S&P 500.
-    It is constructed from S&P 500 option prices — **you cannot buy or sell the VIX directly**.
+    The **VIX index** measures the market’s **expected 30-day implied volatility** of the S&P 500,
+    extracted from option prices. Importantly:
 
-    Because VIX is not tradable, its futures do **not** follow the standard 
-    cost-of-carry model. Instead, VIX futures reflect **expected future volatility**, 
-    not current volatility.
-    """)
-
-    st.latex(r"""
-    F^{\text{VIX}}_0 \neq \text{VIX}_0
-    """)
-
-    st.write("""
-    In calm markets, VIX futures tend to trade **above** spot VIX (contango).  
-    In stressed markets, VIX futures often trade **below** spot VIX (backwardation).  
-    """)
-
-    # ---- Fetch Spot VIX ----
-    try:
-        vix = yf.Ticker("^VIX")
-        vix_price = vix.history(period="1d")["Close"][-1]
-        st.subheader("📌 Current VIX Level")
-        st.write(f"### **VIX (spot): {vix_price:.2f}**")
-    except:
-        st.write("⚠ Unable to load VIX data.")
-
-    # ---- VIX Futures Explanation ----
-    st.write("""
-    ### 🧠 Why VIX Futures Differ from Spot VIX
-    Spot VIX measures **30-day implied volatility today**.  
-    VIX futures measure **what the market thinks volatility will be** on a future date.
-
-    They converge to spot VIX **only on expiration day**:
-    """)
-
-    st.latex(r"""
-    F^{\text{VIX}}_T = \text{VIX}_T
-    """)
-
-    st.write("""
-    But before expiration, futures may be higher or lower depending on the market’s 
-    expectation of future volatility.
+    • **VIX itself is not tradable**  
+    • There is **no portfolio you can buy or sell** that perfectly tracks VIX  
+    • Therefore, standard **no-arbitrage pricing does not apply**
     """)
 
     st.markdown("---")
 
-    # Example simulated VIX futures curve for teaching
-    st.subheader("📉 Example VIX Futures Term Structure (Simulated)")
-
-    maturities = np.array([1, 2, 3, 4, 5]) / 12  # 1–5 months
-    # simple contango example: gradually rising futures prices
-    vix_future_curve = vix_price + np.linspace(1.0, 5.0, len(maturities)) if "vix_price" in locals() else np.linspace(15, 25, len(maturities))
-
-    fig2, ax2 = plt.subplots()
-    ax2.plot(maturities, vix_future_curve, linewidth=2)
-    ax2.set_title("Example VIX Futures Curve")
-    ax2.set_xlabel("Maturity (years)")
-    ax2.set_ylabel("VIX Futures Price")
-    ax2.grid(alpha=0.2)
-    st.pyplot(fig2)
+    # ------------------------------------------------------------
+    # Why VIX Futures Exist
+    # ------------------------------------------------------------
+    st.subheader("📌 Why VIX Futures Exist")
 
     st.write("""
-    ✔ A **rising curve** represents *contango* (typical calm markets).  
-    ✔ A **falling curve** represents *backwardation* (stress or crisis periods).
+    Investors still want to:
+    
+    • **Speculate** on future market volatility  
+    • **Hedge** against volatility spikes  
+
+    Because VIX is not tradable, the CBOE introduced **VIX futures** in 2004
+    as a **pure financial contract** on future volatility.
     """)
+
+    st.write("""
+    VIX futures are **cash-settled**:
+    
+    • There is **nothing to deliver** at expiration  
+    • The payoff depends only on the future realized VIX level  
+    """)
+
+    st.latex(r"""
+    \text{Payoff (Long)} = \text{VIX}_T - F_t(T)
+    """)
+
+    st.write("""
+    Think of a VIX future as a **bet on where volatility will be**, not where it is today.
+    """)
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # No-Arbitrage Breaks Down
+    # ------------------------------------------------------------
+    st.subheader("🚫 Why No-Arbitrage Pricing Fails")
+
+    st.write("""
+    For equity index futures, arbitrage links spot and futures prices tightly.
+    For VIX futures, **this logic breaks down**:
+    
+    • The underlying (VIX) is **not tradable**  
+    • You cannot replicate the payoff of a VIX future dynamically  
+    • Therefore, **no cost-of-carry parity exists**
+    """)
+
+    st.latex(r"""
+    F_t^{\text{VIX}}(T) \neq \text{VIX}_t
+    """)
+
+    st.write("""
+    However, **convergence still holds**.
+    On expiration day, the futures price must equal the realized VIX:
+    """)
+
+    st.latex(r"""
+    \lim_{t \to T} F_t(T) = \text{VIX}_T
+    """)
+
+    st.markdown("---")
+
+    colA, colB = st.columns([1,1])
+    with colA:
+        # ------------------------------------------------------------
+        # What Actually Determines VIX Futures Prices?
+        # ------------------------------------------------------------
+        st.subheader("🧠 What Determines VIX Futures Prices?")
+
+        st.write("""
+        When arbitrage fails, **supply and demand dominate pricing**.
+
+        Accordingly, VIX futures prices are driven by **two forces**:
+        """)
+
+        st.markdown("""
+        **1️⃣ Speculators’ expectations**  
+        **2️⃣ Hedgers’ demand (risk premium)**
+        """)
+
+        st.write("""
+        This leads to the intuitive pricing relationship:
+        """)
+
+        st.latex(r"""
+        F_t(T) = \mathbb{E}_t[\text{VIX}_T] + \text{Risk Premium}_t(T)
+        """)
+
+    with colB:
+
+        # ------------------------------------------------------------
+        # Speculators: Expected Future VIX
+        # ------------------------------------------------------------
+        st.subheader("🔮 Speculators and Expected VIX")
+
+        st.write("""
+        Speculators focus on **expected payoff**:
+
+        • If they expect future VIX to be **higher** than the futures price → they buy  
+        • If they expect future VIX to be **lower** → they sell  
+
+        Expected P&L of a long futures position:
+        """)
+
+        st.latex(r"""
+        \mathbb{E}_t[\text{VIX}_T] - F_t(T)
+        """)
+
+        st.write("""
+        Because of this mechanism:
+        
+        • VIX futures are **positively correlated** with spot VIX  
+        • Short-dated futures react **more strongly** to VIX moves  
+        • Futures prices gradually converge toward spot as maturity shortens
+        """)
+
+    st.markdown("---")
+    col1, col2 = st.columns([1,1])
+    with col1:
+        # ------------------------------------------------------------
+        # Mean Reversion and the Shape of the Curve
+        # ------------------------------------------------------------
+        st.subheader("📉 Mean Reversion and the Term Structure")
+
+        st.write("""
+        Empirically, VIX is **mean-reverting**:
+        
+        • When VIX is high → expected to fall  
+        • When VIX is low → expected to rise  
+        """)
+
+        st.write("""
+        This has a direct implication for the VIX futures curve:
+        
+        • **High VIX today** → downward-sloping curve (backwardation)  
+        • **Low VIX today** → upward-sloping curve (contango)
+        """)
+
+        # ---- Fetch Spot VIX ----
+        try:
+            vix = yf.Ticker("^VIX")
+            vix_price = vix.history(period="1d")["Close"][-1]
+            st.write(f"### 📌 Current Spot VIX: **{vix_price:.2f}**")
+        except:
+            vix_price = None
+            st.write("⚠ Unable to load VIX data.")
+    with col2:
+        # ------------------------------------------------------------
+        # Hedgers and the Volatility Risk Premium
+        # ------------------------------------------------------------
+        st.subheader("🛡️ Hedgers and the Volatility Risk Premium")
+
+        st.write("""
+        VIX futures provide **insurance against volatility spikes**.
+
+        • Market crashes coincide with volatility explosions  
+        • Risk-averse investors want protection  
+        • They are willing to **pay a premium** for it  
+        """)
+
+        st.write("""
+        As a result:
+        
+        • VIX futures prices are typically **above expected future VIX (can be below)**  
+        • Buying VIX futures has **negative expected returns on average**  
+        • Sellers earn the volatility risk premium
+        """)
+
+        st.latex(r"""
+        F_t(T) > \mathbb{E}_t[\text{VIX}_T]
+        """)
+
+        st.write("""
+        This explains why:
+        
+        • Long VIX futures positions lose money on average  
+        • Short volatility strategies earn a premium (but crash risk is large)
+        """)
+
+
 
 
 
@@ -1817,225 +1706,206 @@ elif section == "Index & VIX Futures":
 # ============================================================
 
 elif section == "Arbitrage Strategies":
-
-    st.header("🔍 Arbitrage Strategies")
-
+    st.header("🔍 Arbitrage Analysis")
+    
     st.write("""
-    Arbitrage means constructing a trading strategy with:
-
-    - **no initial cost**  
-    - **no risk**  
-    - **a guaranteed profit**
-
-    Below we explore arbitrage opportunities in:
-    - 📈 **Stock Index Futures**
-    - 🛢️ **Commodity Futures (with storage/consumption effects)**
-    - 💱 **FX Futures & Forwards**
+    **The Intuition:** Arbitrage relies on the **Cost of Carry**. The price of a future should be exactly 
+    equal to the cost of buying the asset now and "carrying" it to the future (paying interest and storage, 
+    minus any dividends or yields). If the market deviates from this, we trade the mispricing.
     """)
-
-    st.markdown("---")
 
     # ============================================================
     # 📈 1. STOCK INDEX ARBITRAGE
     # ============================================================
+    st.subheader("1️⃣ Stock Index Arbitrage")
+    F_fair_stock = S0 * np.exp((r - d) * T)
+    
+    col1, col2 = st.columns([1.5, 1])
 
-    st.subheader("1️⃣ Stock Index Arbitrage (Index Futures Mispricing)")
+    if round(F_mkt_stock, 2) > round(F_fair_stock, 2):
+        diff_stock = F_mkt_stock - F_fair_stock
+        with col1:
+            st.success("Action: Buy Underlying and Sell Futures (Cash-and-Carry)")
+            st.markdown(f"""
+            Fair Future Value: {F_fair_stock:.2f}, Market Future Value: {F_mkt_stock:.2f} \n
+            **Trading Steps:**
+            1. **Borrow** ${S0 * notional:,.0f}$ at {r*100}%.
+            2. **Buy** {notional} units of the Index at spot.
+            3. **Short** {notional} Futures contracts at {F_mkt_stock:.2f}.
+            4. **At Maturity:** Deliver stocks, receive $F_{{mkt}}$, repay loan + interest, keep dividends.
+            
+            **Total Arbitrage Profit: ${diff_stock * notional:,.2f}**
+            """)
+        with col2:
+            st.markdown("**Cashflow at $T=T$**")
+            st.markdown(f"""
+            | Position | Cashflow |
+            | :--- | :--- |
+            | Repay Loan | $-{S0*notional*np.exp(r*T):,.0f}$ |
+            | Sell Index | $+({notional} \\times S_T)$ |
+            | Short Future | $+{notional} \\times (F_{{mkt}} - S_T)$ |
+            | Dividends | $+{S0*notional*(np.exp(d*T)-1):,.0f}$ |
+            | **Net Profit** | **${diff_stock*notional:,.2f}** |
+            """)
+            st.caption("Note: $S_T$ cancels out.")
 
-    st.write("""
-    For equity index futures, the fair price follows the cost-of-carry model:
-    """)
+    elif round(F_mkt_stock, 2) < round(F_fair_stock, 2):
+        diff_stock = F_fair_stock - F_mkt_stock
+        with col1:
+            st.success("Action: Short Underlying and Buy Futures (Reverse Cash-and-Carry)")
+            st.markdown(f"""
+            Fair Future Value: {F_fair_stock:.2f}, Market Future Value: {F_mkt_stock:.2f} \n
+            **Trading Steps:**
+            1. **Short Sell** {notional} units of the Index; receive ${S0 * notional:,.0f}$.
+            2. **Invest** cash at {r*100}%.
+            3. **Long** {notional} Futures contracts at {F_mkt_stock:.2f}.
+            4. **At Maturity:** Use investment to buy stocks via Futures and close short position.
+            
+            **Total Arbitrage Profit: ${diff_stock * notional:,.2f}**
+            """)
+        with col2:
+            st.markdown("**Cashflow at $T=T$**")
+            st.markdown(f"""
+            | Position | Cashflow |
+            | :--- | :--- |
+            | Invest. Proceeds | $+{S0*notional*np.exp(r*T):,.0f}$ |
+            | Buy Index | $-({notional} \\times S_T)$ |
+            | Long Future | $+{notional} \\times (S_T - F_{{mkt}})$ |
+            | Div. Replacement | $-{S0*notional*(np.exp(d*T)-1):,.0f}$ |
+            | **Net Profit** | **${diff_stock*notional:,.2f}** |
+            """)
 
-    st.latex(r"""
-    F_0^{\text{fair}} = S_0 e^{(r - d)T}
-    """)
-
-    st.write("""
-    Where  
-    - \(S_0\) = current index level  
-    - \(r\) = risk-free rate  
-    - \(d\) = dividend yield  
-    - \(T\) = maturity (years)
-
-    If the **actual futures price differs** from the fair price, arbitrage exists.
-    """)
-
-    st.sidebar.header("📈 Stock Index Arbitrage Inputs")
-    S0 = st.sidebar.number_input("Index Spot (S₀)", 1000, 8000, 4500)
-    r = st.sidebar.slider("Risk-free rate r (%)", 0.0, 10.0, 4.0) / 100
-    d = st.sidebar.slider("Dividend yield d (%)", 0.0, 5.0, 1.8) / 100
-    T = st.sidebar.slider("Maturity T (years)", 0.1, 3.0, 1.0)
-    F_mkt = st.sidebar.number_input("Market Futures Price (F)", 1000, 8000, 4600)
-
-    F_fair = S0 * np.exp((r - d) * T)
-
-    st.write(f"**Fair Futures Price:** {F_fair:,.2f}")
-    st.write(f"**Market Futures Price:** {F_mkt:,.2f}")
-
-    # Determine arbitrage
-    if F_mkt > F_fair * 1.0001:
-        st.success("📌 **Futures Overpriced → Cash-and-Carry Arbitrage**")
-
-        st.write(r"""
-        **Strategy:**  
-        - Borrow money at rate \(r\)  
-        - Buy the stock index (or replicate with stocks)  
-        - Sell (short) the overpriced futures  
-        
-        At maturity:  
-        - Deliver the index using your long position  
-        - Repay the loan  
-        → **Profit is locked in today**
-        """)
-    elif F_mkt < F_fair * 0.9999:
-        st.success("📌 **Futures Underpriced → Reverse Cash-and-Carry Arbitrage**")
-
-        st.write(r"""
-        **Strategy:**  
-        - Short the index (or use ETF/swap)  
-        - Invest the proceeds at the risk-free rate  
-        - Buy the underpriced futures  
-        
-        At maturity:  
-        - Use the long futures to obtain index exposure  
-        - Close the short position  
-        → **Risk-free profit**
-        """)
     else:
-        st.info("No arbitrage detected — futures fairly priced.")
-
-    st.markdown("---")
+        st.info(f"**Fairly Priced:** Market ({F_mkt_stock:.2f}) ≈ Fair ({F_fair_stock:.2f}). No arbitrage opportunity.")
 
     # ============================================================
     # 🛢️ 2. COMMODITY ARBITRAGE
     # ============================================================
+    st.divider()
+    st.subheader("2️⃣ Commodity Arbitrage")
+    F_fair_comm = S0 * np.exp((r + u_c - y_c) * T)
+    
+    col1, col2 = st.columns([1.5, 1])
+    
+    if round(F_mkt_comm, 2) > round(F_fair_comm, 2):
+        diff_comm = F_mkt_comm - F_fair_comm
+        with col1:
+            st.warning("Action: Buy Physical and Sell Futures (Cash-and-Carry); this assumes you can store the commodity.")
+            st.markdown(f"""
+            Fair Future Value: {F_fair_comm:.2f}, Market Future Value: {F_mkt_comm:.2f} \n
+            **Trading Steps:**
+            1. **Borrow** ${S0 * notional:,.0f}$ at {r*100:.2f}%.
+            2. **Buy** {notional} units of physical commodity.
+            3. **Short** {notional} Futures at {F_mkt_comm:.2f}.
+            4. **Storage:** Pay {u_c*100:.2f}% storage costs over {T} years.
+            5. **At Maturity:** Deliver commodity, receive $F_{{mkt}}$, repay loan.
+            
+            **Total Arbitrage Profit: ${diff_comm * notional:,.2f}**
+            """)
+        with col2:
+            st.markdown("**Cashflow at $T=T$**")
+            st.markdown(f"""
+            | Position | Cashflow |
+            | :--- | :--- |
+            | Repay Loan | $-{S0*notional*np.exp(r*T):,.0f}$ |
+            | Sell Physical | $+({notional} \\times S_T)$ |
+            | Short Future | $+{notional} \\times (F_{{mkt}} - S_T)$ |
+            | Storage Cost | $-{S0*notional*(np.exp(u_c*T)-1):,.0f}$ |
+            | Conv. Yield | $+{S0*notional*(np.exp(y_c*T)-1):,.0f}$ |
+            | **Net Profit** | **${diff_comm*notional:,.2f}** |
+            """)
 
-    st.subheader("2️⃣ Commodity Arbitrage (Storage & Convenience Yield)")
-
-    st.write("""
-    Commodity futures are priced using the cost-of-carry relation:
-    """)
-
-    st.latex(r"""
-    F_0^{\text{fair}} = S_0 e^{(r + u - y)T}
-    """)
-
-    st.write("""
-    Where  
-    - \(u\) = storage costs  
-    - \(y\) = convenience yield (benefit of physically holding the commodity)
-
-    **Key idea:** commodities may be *consumed*, unlike stocks.
-    """)
-
-    # Inputs
-    st.sidebar.header("🛢️ Commodity Arbitrage Inputs")
-    S_c = st.sidebar.number_input("Spot Commodity Price (S₀)", 1, 500, 80)
-    r_c = st.sidebar.slider("Risk-free Rate r (%)", 0.0, 10.0, 3.0) / 100
-    u_c = st.sidebar.slider("Storage Cost u (%)", 0.0, 10.0, 2.0) / 100
-    y_c = st.sidebar.slider("Convenience Yield y (%)", 0.0, 10.0, 1.0) / 100
-    T_c = st.sidebar.slider("Maturity (years)", 0.1, 2.0, 1.0)
-    F_mkt_c = st.sidebar.number_input("Market Futures Price", 1, 500, 85)
-
-    F_fair_c = S_c * np.exp((r_c + u_c - y_c) * T_c)
-
-    st.write(f"**Fair Commodity Futures Price:** {F_fair_c:.2f}")
-    st.write(f"**Market Futures Price:** {F_mkt_c:.2f}")
-
-    if F_mkt_c > F_fair_c * 1.0001:
-        st.success("📌 **Futures Overpriced → Cash-and-Carry Arbitrage**")
-
-        st.write("""
-        **Strategy:**  
-        - Borrow money  
-        - Buy the physical commodity  
-        - Pay storage costs  
-        - Sell the overpriced futures  
-
-        Guaranteed profit when futures mature.
-        """)
-    elif F_mkt_c < F_fair_c * 0.9999:
-        st.success("📌 **Futures Underpriced → Reverse Cash-and-Carry**")
-
-        st.write("""
-        **Strategy:**  
-        - Short the physical commodity (or use inventory)  
-        - Save storage costs  
-        - Invest proceeds  
-        - Buy the cheap futures  
-
-        Guaranteed profit at maturity.
-        """)
+    elif round(F_mkt_comm, 2) < round(F_fair_comm, 2):
+        diff_comm = F_fair_comm - F_mkt_comm
+        with col1:
+            st.success("Action: Sell Physical and Buy Futures (Reverse Cash-and-Carry)")
+            st.markdown(f"""
+            Fair Future Value: {F_fair_comm:.2f}, Market Future Value: {F_mkt_comm:.2f} \n
+            **Trading Steps:**
+            1. **Sell** {notional} units of existing inventory at spot.
+            2. **Invest** proceeds at {r*100:.2f}% and **Save** {u_c*100:.2f}% on storage.
+            3. **Long** {notional} Futures at {F_mkt_comm:.2f}.
+            4. **At Maturity:** Buy back the commodity using the investment proceeds.
+            
+            **Total Arbitrage Profit: ${diff_comm * notional:,.2f}**
+            """)
+        with col2:
+            st.markdown("**Cashflow at $T=T$**")
+            st.markdown(f"""
+            | Position | Cashflow |
+            | :--- | :--- |
+            | Invest. Proceeds | $+{S0*notional*np.exp(r*T):,.0f}$ |
+            | Buy Physical | $-({notional} \\times S_T)$ |
+            | Long Future | $+{notional} \\times (S_T - F_{{mkt}})$ |
+            | Save Storage | $+{S0*notional*(np.exp(u_c*T)-1):,.0f}$ |
+            | **Net Profit** | **${diff_comm*notional:,.2f}** |
+            """)
     else:
-        st.info("No arbitrage detected — commodity fairly priced.")
-
-    st.markdown("---")
+        st.info(f"**Fairly Priced:** Market ({F_mkt_comm:.2f}) ≈ Fair ({F_fair_comm:.2f}).")
 
     # ============================================================
-    # 💱 3. FX ARBITRAGE
+    # 💱 3. FX ARBITRAGE (CIP)
     # ============================================================
+    st.divider()
+    st.subheader("3️⃣ FX Arbitrage (Covered Interest Parity)")
+    F_fair_fx = S0 * np.exp((r - r_f) * T)
+    
+    col1, col2 = st.columns([1.5, 1])
 
-    st.subheader("3️⃣ FX Arbitrage (Interest Rate Parity Mispricing)")
-
-    st.write("""
-    FX forwards must satisfy **covered interest rate parity (CIP)**:
-    """)
-
-    st.latex(r"""
-    F_0^{\text{fair}} = S_0 \frac{(1 + r_\text{dom}T)}{(1 + r_\text{for}T)}
-    """)
-
-    st.write("""
-    Where  
-    - \(S_0\) = spot FX rate (domestic per foreign)  
-    - \(r_\text{dom}\) = domestic interest rate  
-    - \(r_\text{for}\) = foreign interest rate  
-
-    If the actual forward violates this relation → **risk-free FX arbitrage**.
-    """)
-
-    # Inputs
-    st.sidebar.header("💱 FX Arbitrage Inputs")
-    S_fx = st.sidebar.number_input("Spot FX Rate (S₀)", 0.01, 10.0, 1.10)
-    r_d = st.sidebar.slider("Domestic Rate (%)", 0.0, 15.0, 5.0) / 100
-    r_f = st.sidebar.slider("Foreign Rate (%)", 0.0, 15.0, 2.0) / 100
-    T_fx = st.sidebar.slider("Maturity (years)", 0.1, 3.0, 1.0)
-    F_mkt_fx = st.sidebar.number_input("Market Forward Price", 0.01, 10.0, 1.12)
-
-    F_fair_fx = S_fx * (1 + r_d * T_fx) / (1 + r_f * T_fx)
-
-    st.write(f"**Fair Forward Price:** {F_fair_fx:.4f}")
-    st.write(f"**Market Forward Price:** {F_mkt_fx:.4f}")
-
-    if F_mkt_fx > F_fair_fx * 1.0001:
-        st.success("📌 **Forward Overpriced → Borrow Foreign, Lend Domestic**")
-
-        st.write(r"""
-        **Strategy:**  
-        1. Borrow foreign currency  
-        2. Convert to domestic currency at spot  
-        3. Invest domestically  
-        4. Sell the overpriced forward  
-        
-        Guaranteed profit at maturity.
-        """)
-    elif F_mkt_fx < F_fair_fx * 0.9999:
-        st.success("📌 **Forward Underpriced → Borrow Domestic, Lend Foreign**")
-
-        st.write(r"""
-        **Strategy:**  
-        1. Borrow domestic currency  
-        2. Convert to foreign currency  
-        3. Invest abroad  
-        4. Buy the underpriced forward  
-
-        Guaranteed profit — this is classic CIP arbitrage.
-        """)
+    if round(F_mkt_fx, 4) > round(F_fair_fx, 4):
+        diff_fx = F_mkt_fx - F_fair_fx
+        with col1:
+            st.success("Action: Borrow Domestic / Invest Foreign")
+            st.markdown(f"""
+            Fair Future Value: {F_fair_fx:.4f}, Market Future Value: {F_mkt_fx:.4f} \n
+            1. **Borrow** ${S0 * notional:,.2f}$ Domestic units at {r*100}%.
+            2. **Convert** to {notional} Foreign units at spot $S_0$.
+            3. **Invest** Foreign units at foreign rate {r_f*100}%.
+            4. **Sell Forward** the total foreign principal + interest.
+            
+            **Total Arbitrage Profit: ${diff_fx * notional:,.2f}**
+            """)
+        with col2:
+            st.markdown("**Cashflow at $T=T$ (Dom)**")
+            st.markdown(f"""
+            | Position | Cashflow |
+            | :--- | :--- |
+            | Repay Dom Loan | $-{S0*notional*np.exp(r*T):,.2f}$ |
+            | Sell For. Invest | $+{notional*np.exp(r_f*T)*F_mkt_fx:,.2f}$ |
+            | **Net Profit** | **${diff_fx*notional:,.2f}** |
+            """)
+            
+    elif round(F_mkt_fx, 4) < round(F_fair_fx, 4):
+        diff_fx = F_fair_fx - F_mkt_fx
+        with col1:
+            st.success("Action: Borrow Foreign / Invest Domestic")
+            st.markdown(f"""
+            Fair Future Value: {F_fair_fx:.4f}, Market Future Value: {F_mkt_fx:.4f} \n
+            **Trading Steps:**
+            1. **Borrow** Foreign currency units.
+            2. **Convert** to Domestic units at spot $S_0$.
+            3. **Invest** Domestic units at {r*100}%.
+            4. **Buy Forward** to lock in the repayment of the foreign loan.
+            
+            **Total Arbitrage Profit: ${diff_fx * notional:,.2f}**
+            """)
+        with col2:
+            st.markdown("**Cashflow at $T=T$ (Dom)**")
+            st.markdown(f"""
+            | Position | Cashflow |
+            | :--- | :--- |
+            | Invest Dom Cash | $+{S0*notional*np.exp(r*T):,.2f}$ |
+            | Repay For. Loan | $-{notional*np.exp(r_f*T)*F_mkt_fx:,.2f}$ |
+            | **Net Profit** | **${diff_fx*notional:,.2f}** |
+            """)
     else:
-        st.info("No FX arbitrage detected — parity holds.")
+        st.info(f"**Fairly Priced:** Market ({F_mkt_fx:.2f}) ≈ Fair ({F_fair_fx:.2f}).")
 
-    st.markdown("---")
-
-    st.write("""### ✔️ All three arbitrage types rely on the same principle:""")
-
-    st.write("""The futures/forward price must equal its no-arbitrage fair value.  
-    If not, you can construct a risk-free profit. In general always follow the rule: Buy cheap, short sell expensive""")
+    st.divider()
+    st.subheader("🏁 Final Intuition: Why does this disappear?")
+    st.write("""
+    In the real world, these opportunities are rare because:
+    - **Market Efficiency:** Algorithmic bots execute these trades in microseconds.
+    - **Transaction Costs:** The "Profit" must be larger than the bid-ask spread and commissions.
+    - **Slippage:** Prices might change between Step 1 and Step 3 of your trade.
+    """)
