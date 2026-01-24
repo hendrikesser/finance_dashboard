@@ -17,3 +17,15 @@ git push origin main
 # 5️⃣ Run Streamlit locally to see the app
 python3 -m streamlit run 00_Home.py
 
+
+
+
+cd /Users/hendrikesser/Desktop/Uni-sonstige/finance_dashboard
+
+git add .
+
+git commit -m "Update Streamlit app: Stock & Commodity Futures section and other changes"
+
+git push origin main
+
+python3 -m streamlit run 00_Home.py
