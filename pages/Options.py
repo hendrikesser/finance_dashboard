@@ -32,8 +32,7 @@ section = st.selectbox(
     [
         "Basics & Put-Call Parity",
         "Binomial Tree Model",
-        "Black-Scholes Model",
-        "Implied Volatility",
+        "Black-Scholes Model and Implied Volatility",
         "Greeks & Risk Management",
     ])
 
@@ -381,159 +380,495 @@ if section == "Basics & Put-Call Parity":
 # =======================================
 # 2️⃣ BINOMIAL TREE MODEL
 # =======================================
+
 elif section == "Binomial Tree Model":
-    st.header("🌳 Binomial Options Pricing (1-Step)")
+    st.header("🌳 Binomial Options Pricing Model")
     
-    st.sidebar.header("Binomial Inputs")
-    S0 = st.sidebar.number_input("Spot Price", value=100.0)
-    u = st.sidebar.slider("Up Factor (u)", 1.01, 1.50, 1.10)
-    d = st.sidebar.slider("Down Factor (d)", 0.50, 0.99, 0.90)
-    r_b = st.sidebar.slider("Risk-free rate (r)", 0.0, 0.10, 0.05)
-    K_b = st.sidebar.number_input("Strike Price", value=100.0)
-
-    # Math
-    q = (np.exp(r_b) - d) / (u - d) # Risk-neutral probability
-    Su = S0 * u
-    Sd = S0 * d
-    Cu = max(Su - K_b, 0)
-    Cd = max(Sd - K_b, 0)
-    C0 = np.exp(-r_b) * (q * Cu + (1 - q) * Cd)
-
-    st.write("""
-    The Binomial Model discretizes price movements. In a one-step model, the stock can move to either an **Up** state or a **Down** state.
+    st.markdown("""
+    The Binomial Model is a discrete-time framework that assumes over a small interval $\Delta t$, the price moves **Up ($u$)** or **Down ($d$)**. 
+    This specific implementation uses a **recombining tree**, where an 'Up' move followed by a 'Down' move returns to the original price ($u \cdot d = 1$).
     """)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("#### Risk-Neutral Probability ($q$)")
-        st.latex(r"q = \frac{e^{r\Delta t} - d}{u - d}")
-        st.write(f"Calculated $q$: **{q:.4f}**")
-        
-        st.write("#### Option Value at $t=0$")
-        st.latex(r"f = e^{-r\Delta t} [q f_u + (1-q) f_d]")
-        st.metric("Fair Call Price", f"{C0:.2f}")
+    # --- Sidebar Parameters ---
+    st.sidebar.header("Tree Parameters")
+    S0 = st.sidebar.number_input("Initial Stock Price ($S_0$)", value=100.0)
+    sigma_b = st.sidebar.slider("Volatility ($\sigma$)", 0.1, 0.8, 0.2)
+    r_b = st.sidebar.slider("Risk-free rate ($r$)", 0.0, 0.2, 0.05)
+    T_b = st.sidebar.slider("Time to Maturity ($T$ in years)", 0.1, 2.0, 1.0)
+    K_b = st.sidebar.number_input("Strike Price ($K$)", value=100.0)
 
-    with col2:
-        st.write("#### Visual Representation")
-        # Creating a simple plot to mimic a tree
-        fig, ax = plt.subplots(figsize=(5,3))
-        ax.plot([0, 1], [S0, Su], marker='o', color='green', label='Up state')
-        ax.plot([0, 1], [S0, Sd], marker='o', color='red', label='Down state')
-        ax.annotate(f'S={Su}\nC={Cu}', (1, Su))
-        ax.annotate(f'S={Sd}\nC={Cd}', (1, Sd))
-        ax.annotate(f'S₀={S0}', (0, S0), textcoords="offset points", xytext=(-30,0))
-        ax.set_title("1-Step Binomial Tree")
-        ax.axis('off')
-        st.pyplot(fig)
-
-# =======================================
-# 3️⃣ BLACK-SCHOLES MODEL
-# =======================================
-elif section == "Black-Scholes Model":
-    st.header("🧪 Black-Scholes-Merton (BSM) Model")
+    # --- 1-PERIOD BINOMIAL TREE (European Call for Intro) ---
+    st.subheader("1️⃣ The 1-Period Model")
+    dt1 = T_b
+    u1 = np.exp(sigma_b * np.sqrt(dt1))
+    d1 = 1/u1
+    q1 = (np.exp(r_b * dt1) - d1) / (u1 - d1)
     
-    st.sidebar.header("BSM Inputs")
-    S = st.sidebar.number_input("Spot Price", value=100.0)
-    K = st.sidebar.number_input("Strike Price", value=105.0)
-    T = st.sidebar.slider("Maturity (T)", 0.01, 5.0, 1.0)
-    r = st.sidebar.slider("Risk-free Rate", 0.0, 0.15, 0.05)
-    sigma = st.sidebar.slider("Volatility (σ)", 0.05, 1.0, 0.20)
+    Su, Sd = S0 * u1, S0 * d1
+    Cu, Cd = max(Su - K_b, 0), max(Sd - K_b, 0)
+    C0 = np.exp(-r_b * dt1) * (q1 * Cu + (1 - q1) * Cd)
 
-    call_p, d1, d2 = black_scholes(S, K, T, r, sigma, "call")
-    put_p, _, _ = black_scholes(S, K, T, r, sigma, "put")
-
-    st.write("The BSM model assumes stock prices follow a Geometric Brownian Motion with constant volatility.")
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Call Price", f"${call_p:.2f}")
-    c2.metric("Put Price", f"${put_p:.2f}")
-    c3.metric("d1", f"{d1:.4f}")
+    col1, col2 = st.columns([1, 1.5])
+    with col1:
+        st.markdown(f"**Risk-Neutral Probability ($q$):** {q1:.4f}")
+        st.latex(r"q = \frac{e^{r\Delta t} - d}{u - d}")
+        st.write(f"This $q$ ensures the asset's expected return is $r$.")
+        st.metric("1-Period Call Price", f"{C0:.2f}")
+    with col2:
+        fig1, ax1 = plt.subplots(figsize=(6, 3))
+        ax1.plot([0, 1], [S0, Su], 'bo-'); ax1.plot([0, 1], [S0, Sd], 'bo-')
+        ax1.text(1.05, Su, f'S_u={Su:.1f}\nC_u={Cu:.2f}'); ax1.text(1.05, Sd, f'S_d={Sd:.1f}\nC_d={Cd:.2f}')
+        ax1.axis('off')
+        st.pyplot(fig1)
 
     st.markdown("---")
-    st.subheader("📊 Price Sensitivity to Volatility")
-    vols = np.linspace(0.05, 0.8, 50)
-    prices = [black_scholes(S, K, T, r, v, "call")[0] for v in vols]
-    
-    fig, ax = plt.subplots(figsize=(10,4))
-    ax.plot(vols*100, prices, color='#1a73e8', lw=3)
-    ax.set_xlabel("Volatility (%)")
-    ax.set_ylabel("Call Price ($)")
-    ax.set_title("Option Price vs Volatility")
-    ax.grid(alpha=0.3)
-    st.pyplot(fig)
 
+    # --- 2-PERIOD BINOMIAL TREE (American Put) ---
+    st.subheader("2️⃣ The 2-Period American Put Model")
+    st.write("Building on the 1-period logic, we now allow for early exercise at each node, as well as more steps, which is crucial for American options.")
+    st.info("💡 **American Option Logic:** At each node, we check if $Payoff_{Exercise} > Value_{Hold}$.")
+    
+    dt2 = T_b / 2
+    u2 = np.exp(sigma_b * np.sqrt(dt2))
+    d2 = 1/u2
+    q2 = (np.exp(r_b * dt2) - d2) / (u2 - d2)
+    disc = np.exp(-r_b * dt2)
+
+    # Node Calculations - Stock Prices
+    S_u, S_d = S0 * u2, S0 * d2
+    S_uu, S_ud, S_dd = S0*(u2**2), S0, S0*(d2**2) # S_ud is S0 because u*d=1 (Recombining)
+
+    # Step 1: Payoffs at Expiration (t=2)
+    P_uu, P_ud, P_dd = max(K_b - S_uu, 0), max(K_b - S_ud, 0), max(K_b - S_dd, 0)
+
+    # Step 2: Backward Induction to t=1
+    # Node Up (u)
+    cont_u = disc * (q2 * P_uu + (1-q2) * P_ud)
+    exer_u = max(K_b - S_u, 0)
+    P_u = max(cont_u, exer_u)
+
+    # Node Down (d)
+    cont_d = disc * (q2 * P_ud + (1-q2) * P_dd)
+    exer_d = max(K_b - S_d, 0)
+    P_d = max(cont_d, exer_d)
+
+    # Step 3: Backward Induction to t=0
+    cont_0 = disc * (q2 * P_u + (1-q2) * P_d)
+    exer_0 = max(K_b - S0, 0)
+    P0_2 = max(cont_0, exer_0)
+
+    # Visualizing the Tree
+    fig2, ax2 = plt.subplots(figsize=(8, 5))
+    nodes = {'0': (0, S0), 'u': (1, S_u), 'd': (1, S_d), 'uu': (2, S_uu), 'ud': (2, S_ud), 'dd': (2, S_dd)}
+    for start, end in [('0','u'), ('0','d'), ('u','uu'), ('u','ud'), ('d','ud'), ('d','dd')]:
+        ax2.plot([nodes[start][0], nodes[end][0]], [nodes[start][1], nodes[end][1]], 'gray', linestyle='--')
+
+    ax2.text(0, S0, f"S={S0}\n**P={P0_2:.2f}**", bbox=dict(facecolor='lightgrey'))
+    ax2.text(1, S_u, f"S_u={S_u:.1f}\nP_u={P_u:.2f} {'(Ex)' if exer_u > cont_u else ''}")
+    ax2.text(1, S_d, f"S_d={S_d:.1f}\nP_d={P_d:.2f} {'(Ex)' if exer_d > cont_d else ''}")
+    ax2.text(2, S_uu, f"S_uu={S_uu:.1f}\nPayoff={P_uu:.2f}")
+    ax2.text(2, S_ud, f"S_ud={S_ud:.1f}\nPayoff={P_ud:.2f}")
+    ax2.text(2, S_dd, f"S_dd={S_dd:.1f}\nPayoff={P_dd:.2f}")
+    ax2.set_title("2-Step Recombining Tree (American Put)")
+    st.pyplot(fig2)
+
+    # Calculation Breakdown
+    with st.expander("🔍 See Detailed Step-by-Step Calculations"):
+        st.write(f"**Parameters:** $\Delta t = {dt2:.2f}$, $u = {u2:.4f}$, $d = {d2:.4f}$, $q = {q2:.4f}$")
+        st.markdown(f"""
+        1. **At t=2 (Final Nodes):**
+           - $P_{{uu}} = \max({K_b} - {S_uu:.2f}, 0) = {P_uu:.2f}$
+           - $P_{{ud}} = \max({K_b} - {S_ud:.2f}, 0) = {P_ud:.2f}$
+           - $P_{{dd}} = \max({K_b} - {S_dd:.2f}, 0) = {P_dd:.2f}$
+        2. **At t=1 (Backward Induction):**
+           - Node Down: Continuation value = $e^{{-r\Delta t}}({q2:.2f} \cdot {P_ud} + {1-q2:.2f} \cdot {P_dd}) = {cont_d:.2f}$. 
+           - Exercise value = ${K_b} - {S_d:.2f} = {exer_d:.2f}$.
+           - **$P_d = \max({cont_d:.2f}, {exer_d:.2f}) = {P_d:.2f}$**
+        """)
+
+    st.markdown("---")
+    st.subheader("♾️ The Theoretical Limit: Black-Scholes")
+    st.write("The theoretical limit of the binomial model is the Black-Scholes model. As the number of steps increases, the binomial price converges to the Black-Scholes price. With this, our delta t approaches zero, while at the same time the volatility per step reduces, such that the overall variance over the life of the option remains constant.")
+    st.write("In the next section, we will explore the continuous-time Black-Scholes model, which provides a closed-form solution for European options under certain assumptions.")
+    
 # =======================================
-# 4️⃣ IMPLIED VOLATILITY
+# 3️⃣ BLACK-SCHOLES MODEL and Implied Volatility
 # =======================================
-elif section == "Implied Volatility":
-    st.header("📉 Implied Volatility (IV)")
+elif section == "Black-Scholes Model and Implied Volatility":
+    st.header("🧪 Black-Scholes-Merton (BSM) Model")
+
+    # --- 1. Introduction & Theoretical Link ---
+    st.subheader("1️⃣ From Binomial Trees to Continuous Time")
     st.write("""
-    **Implied Volatility** is the σ value that, when plugged into the Black-Scholes formula, 
-    makes the theoretical price equal to the **market price**. 
-    It represents the market's expectation of future risk.
+    The Black-Scholes model is the continuous-time limit of the Binomial Tree. 
+    Imagine a tree where the time step $\Delta t$ becomes infinitely small and the number of periods $N$ becomes infinitely large.
     """)
-    
-    market_price = st.number_input("Enter Market Call Price", value=10.0)
-    st.info("In practice, IV is found using numerical methods like Newton-Raphson.")
-    
-    # Placeholder for actual IV solver
-    st.write("#### 🔹 The Volatility Smile")
-    st.write("Usually, IV is not constant across all strikes. This 'smile' or 'skew' indicates that the market prices tail-risks differently.")
-    
-    # Dummy Vol Smile Plot
-    strikes = np.linspace(80, 120, 10)
-    iv_smile = [0.25, 0.22, 0.20, 0.19, 0.18, 0.19, 0.21, 0.23, 0.26, 0.30]
-    fig, ax = plt.subplots(figsize=(8,4))
-    ax.plot(strikes, iv_smile, marker='o', linestyle='--')
-    ax.set_title("Example of a Volatility Smile")
-    ax.set_xlabel("Strike Price")
-    ax.set_ylabel("Implied Volatility")
-    st.pyplot(fig)
 
-# =======================================
+    st.info("⚠️ **Important:** While the Binomial Tree can price American options, the standard Black-Scholes formula applies **only to European options**.")
+
+    with st.expander("📝 Short Derivation Sketch"):
+        st.write("""
+        1. **Price Movement:** In each step of a tree, $u = e^{\sigma\sqrt{dt}}$ and $d = e^{-\sigma\sqrt{dt}}$. 
+        2. **Distribution:** According to the **Central Limit Theorem**, as $N \to \infty$, the sum of these discrete up/down moves converges to a Normal distribution.
+        3. **Log-Normality:** Specifically, the log of the stock price at maturity follows:
+        """)
+        st.latex(r"\ln(S_T) \sim N\left(\ln(S_0) + (r - y - \frac{\sigma^2}{2})T, \sigma^2 T\right)")
+        st.write("""
+        4. **Pricing:** The option price is then the expected payoff under this distribution, discounted back at the risk-free rate: $e^{-rT} E[max(S_T - K, 0)]$.
+        """)
+
+    # --- NEW: BSM ASSUMPTIONS ---
+    st.subheader("📂 Core Assumptions of the BSM Economy")
+    st.markdown("""
+    To arrive at a closed-form solution, Black, Scholes, and Merton assumed a "frictionless" market:
+    * **Log-Normal Returns:** Stock price follows Geometric Brownian Motion; log returns are independent and normally distributed.
+    * **Constant Parameters:** Volatility ($\sigma$), risk-free rate ($r$), and dividend yield ($y$) are known and stay constant over the option's life.
+    * **No Arbitrage:** There are no riskless profit opportunities.
+    * **Continuous Trading:** No transaction costs, no taxes, and securities are infinitely divisible (you can buy 0.0001 shares).
+    * **No Early Exercise:** Strictly for European-style options.
+    """)
+
+    st.markdown("---")
+
+    # --- 2. The Formula & Components ---
+    st.subheader("2️⃣ The Black-Scholes Formula")
+    
+    st.write("The price of a European Call ($C$) and Put ($P$) is given by:")
+    st.latex(r"C = S_0 e^{-yT} N(d_1) - K e^{-rT} N(d_2)")
+    st.latex(r"P = K e^{-rT} N(-d_2) - S_0 e^{-yT} N(-d_1)")
+    
+    st.write("**How to calculate $d_1$ and $d_2$:**")
+    st.latex(r"d_1 = \frac{\ln(S_0/K) + (r - y + \sigma^2/2)T}{\sigma\sqrt{T}} \quad , \quad d_2 = d_1 - \sigma\sqrt{T}")
+
+    with st.expander("🔍 Explaining the Components"):
+        st.markdown("""
+        * **$N(x)$**: The cumulative standard normal distribution (probability that a variable is $\le x$).
+        * **$N(d_2)$**: The **risk-neutral probability** that the option will expire in-the-money (for a call, $S_T > K$).
+        * **$N(d_1)$**: The **option delta ($\Delta$)** for a non-dividend paying stock. It represents the hedge ratio—how many shares of the underlying stock are needed to hedge one call option.
+        * **$K e^{-rT} N(d_2)$**: The present value of the strike price you expect to pay, multiplied by the probability of paying it.
+        * **$S_0 e^{-yT} N(d_1)$**: The present value of the stock you expect to receive, weighted by its hedge ratio.
+        * **$y$**: The continuous dividend yield.
+        """)
+
+    st.markdown("---")
+
+    # --- 3. Numerical Example & Inputs ---
+    # ... [Rest of your numerical example and sensitivity code remains the same] ...
+
+    # --- 3. Numerical Example & Inputs ---
+    st.subheader("3️⃣ Numerical Example")
+    
+    # Input columns
+    col_in1, col_in2 = st.columns(2)
+    with col_in1:
+        S_ex = st.number_input("Current Price ($S_0$)", value=4000.0)
+        K_ex = st.number_input("Strike Price ($K$)", value=4200.0)
+        T_ex = st.number_input("Maturity (Years)", value=0.5)
+    with col_in2:
+        r_ex = st.number_input("Risk-free Rate (e.g., 0.04)", value=0.04)
+        y_ex = st.number_input("Dividend Yield (e.g., 0.017)", value=0.017)
+        sigma_ex = st.number_input("Volatility (e.g., 0.20)", value=0.20)
+
+    # Calculation logic
+    d1_ex = (np.log(S_ex / K_ex) + (r_ex - y_ex + 0.5 * sigma_ex**2) * T_ex) / (sigma_ex * np.sqrt(T_ex))
+    d2_ex = d1_ex - sigma_ex * np.sqrt(T_ex)
+    
+    call_ex = (S_ex * np.exp(-y_ex * T_ex) * norm.cdf(d1_ex) - 
+               K_ex * np.exp(-r_ex * T_ex) * norm.cdf(d2_ex))
+    
+    put_ex = (K_ex * np.exp(-r_ex * T_ex) * norm.cdf(-d2_ex) - 
+              S_ex * np.exp(-y_ex * T_ex) * norm.cdf(-d1_ex))
+
+    # Display result
+    st.write("### **Results**")
+    res1, res2, res3 = st.columns(3)
+    res1.metric("d1 parameter", f"{d1_ex:.4f}")
+    res2.metric("d2 parameter", f"{d2_ex:.4f}")
+    res3.metric("Call Price", f"${call_ex:.2f}")
+
+    st.write(f"**Step-by-Step Calculation for this Example:**")
+    st.latex(rf"d_1 = \frac{{\ln({S_ex}/{K_ex}) + ({r_ex} - {y_ex} + 0.5 \cdot {sigma_ex}^2) \cdot {T_ex}}}{{{sigma_ex} \cdot \sqrt{{{T_ex}}}}} = {d1_ex:.4f}")
+    st.latex(rf"d_2 = {d1_ex:.4f} - {sigma_ex} \cdot \sqrt{{{T_ex}}} = {d2_ex:.4f}")
+    st.write(f"Using $N(d_1) = {norm.cdf(d1_ex):.4f}$ and $N(d_2) = {norm.cdf(d2_ex):.4f}$ leads to a Call price of **${call_ex:.2f}**.")
+
+    # --- 4. Volatility Sensitivity (Vega) ---
+    st.markdown("---")
+    st.subheader("📊 Price Sensitivity to Volatility")
+
+    col_vis1, col_vis2 = st.columns([1, 1.5])
+
+    with col_vis1:
+        st.write("**Why does Volatility drive up prices?**")
+        st.markdown("""
+        An option has a **convex payoff** structure: 
+        * Your losses are capped at the premium paid (the bottom).
+        * Your potential gains are theoretically unlimited (the top).
+        
+        Higher volatility increases the "dispersion" of potential stock prices at maturity. Since you don't care how far the stock goes *below* the strike, but you benefit significantly the further it goes *above* the strike, more volatility makes the option more valuable.
+        """)
+        st.info("💡 In finance, this sensitivity is known as **Vega**.")
+
+    with col_vis2:
+        vols = np.linspace(0.05, 0.8, 50)
+        
+        # Recalculating prices for the graph based on the user's example inputs
+        prices = []
+        for v in vols:
+            d1_v = (np.log(S_ex / K_ex) + (r_ex - y_ex + 0.5 * v**2) * T_ex) / (v * np.sqrt(T_ex))
+            d2_v = d1_v - v * np.sqrt(T_ex)
+            p = (S_ex * np.exp(-y_ex * T_ex) * norm.cdf(d1_v) - 
+                 K_ex * np.exp(-r_ex * T_ex) * norm.cdf(d2_v))
+            prices.append(p)
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(vols * 100, prices, color='#1a73e8', lw=3)
+        ax.set_xlabel("Annual Volatility (%)", fontsize=12)
+        ax.set_ylabel("Call Price ($)", fontsize=12)
+        ax.set_title("Vega: Option Price vs. Volatility", fontsize=14)
+        ax.grid(alpha=0.3)
+        st.pyplot(fig)
+
+    st.markdown("---")
+
+    st.header("📉 Implied Volatility (IV) & The VIX")
+    
+    st.markdown("""
+    **Implied Volatility** is the "volatility parameter" $\sigma$ that, when plugged into the Black-Scholes formula, 
+    makes the theoretical price equal to the **market price**. 
+    
+    Instead of using historical data to predict the future, we look at market prices to see what investors **expect** volatility to be over the life of the option.
+    """)
+
+    # --- IV Calculation Concept ---
+    st.subheader("1️⃣ How is Implied Volatility calculated?")
+    st.write("Since we cannot rearrange the Black-Scholes formula to solve for $\sigma$ directly, we use numerical methods like **Newton-Raphson** or **Goal Seek** in excel.")
+    
+    st.write("""
+        **IV vs. Realized Volatility:**
+        * **IV:** Forward-looking. Reflects the cost of insurance (the "Fear Gauge").
+        * **Realized Vol:** Backward-looking. Measures actual past price swings.
+        * *Note:* On average, IV > Realized Vol because investors pay a **Risk Premium** for protection.
+        """)
+
+    st.markdown("---")
+
+    # --- The Volatility Smile ---
+    st.subheader("2️⃣ The Volatility Smile & Skew")
+    st.write("""
+    If Black-Scholes were perfect, IV would be constant across all strike prices. In reality, we see a **Smile** (or Skew).
+    This proves that the assumption of **Log-Normality** does not hold in the real market.
+    """)
+
+    col_sm1, col_sm2 = st.columns([1, 1.5])
+    with col_sm1:
+        st.markdown("""
+        **Why the Smile exists:**
+        * **Crash Phobia:** Investors associate a higher likelihood of market crashes than a normal distribution predicts.
+        * **Expensive Puts:** Out-of-the-Money (OTM) puts are "excessively" expensive because they act as insurance against crashes.
+        * **Negative Skew:** The market distribution has a much heavier "left tail" than Black-Scholes assumes.
+        """)
+    with col_sm2:
+        # Generate a sample Volatility Smile/Skew plot
+        strikes = np.linspace(80, 120, 20)
+        # Typical equity skew: higher IV for lower strikes
+        iv_skew = 0.25 - 0.002 * (strikes - 100) + 0.0001 * (strikes - 100)**2
+        fig_sm, ax_sm = plt.subplots(figsize=(8, 5))
+        ax_sm.plot(strikes, iv_skew, marker='o', color='#d93025', label="Market IV")
+        ax_sm.axhline(y=0.20, color='gray', linestyle='--', label="BS Constant Vol")
+        ax_sm.set_title("Equity Volatility Skew (S&P 500)")
+        ax_sm.set_xlabel("Strike Price")
+        ax_sm.set_ylabel("Implied Volatility")
+        ax_sm.legend()
+        ax_sm.grid(alpha=0.3)
+        st.pyplot(fig_sm)
+
+    st.markdown("---")
+
+ # =======================================
 # 5️⃣ GREEKS & RISK MANAGEMENT
 # =======================================
 elif section == "Greeks & Risk Management":
-    st.header("🛡️ The Greeks")
-    st.write("Greeks measure the sensitivity of the option price to various parameters.")
+    st.header("🛡️ The Greeks & Delta Hedging")
 
-    # Sidebar for Greeks
-    st.sidebar.header("Parameters")
-    S_g = st.sidebar.number_input("Spot Price", value=100.0)
-    K_g = st.sidebar.number_input("Strike Price", value=100.0)
-    T_g = st.sidebar.slider("Time", 0.1, 2.0, 0.5)
-    sigma_g = st.sidebar.slider("Vol", 0.1, 0.5, 0.2)
-    r_g = 0.05
-
-    greeks = bsm_greeks(S_g, K_g, T_g, r_g, sigma_g)
-
-    cols = st.columns(4)
-    cols[0].metric("Delta (Call)", f"{greeks['Delta Call']:.3f}")
-    cols[1].metric("Gamma", f"{greeks['Gamma']:.4f}")
-    cols[2].metric("Vega", f"{greeks['Vega']:.3f}")
-    cols[3].metric("Delta (Put)", f"{greeks['Delta Put']:.3f}")
-
-    st.markdown("---")
-    
-    # Explanations
-    st.subheader("🔍 Greek Definitions")
-    st.markdown("""
-    * **Delta ($\Delta$):** Sensitivity to the underlying price. $\Delta = 0.5$ means for every \$1 move in the stock, the option moves \$0.50.
-    * **Gamma ($\Gamma$):** The rate of change in Delta. Measures the 'acceleration' of the price.
-    * **Vega:** Sensitivity to volatility. High vega means the option is sensitive to changes in market fear.
-    * **Theta ($\Theta$):** Sensitivity to time decay. Options lose value as they approach expiry (all else equal).
+    # --- 1. Theoretical Definitions ---
+    st.subheader("1️⃣ What are the Greeks?")
+    st.write("""
+    The "Greeks" are partial derivatives of the Black-Scholes formula. They tell us exactly how 
+    much the option price will change if one input (like stock price or volatility) moves.
     """)
 
-    # Delta across Spot Prices
-    spots = np.linspace(S_g * 0.5, S_g * 1.5, 100)
-    deltas = [bsm_greeks(s, K_g, T_g, r_g, sigma_g)["Delta Call"] for s in spots]
-    
-    fig, ax = plt.subplots(figsize=(10,4))
-    ax.plot(spots, deltas, color='purple', lw=2)
-    ax.axvline(K_g, color='black', linestyle='--', label='At-the-money')
-    ax.set_title("Call Delta vs Stock Price")
-    ax.set_xlabel("Stock Price")
-    ax.set_ylabel("Delta")
-    ax.legend()
-    st.pyplot(fig)
+    with st.expander("📚 Theoretical Explanation of Each Greek"):
+        st.markdown("""
+* **Delta ($\Delta$):** The sensitivity of the option price to a change in the underlying stock price ($\partial C / \partial S$). It is also the **hedge ratio** used to create a risk-less portfolio.
 
+* **Gamma ($\Gamma$):** The sensitivity of Delta to a change in the stock price ($\partial^2 C / \partial S^2$). It measures the 'acceleration' of price moves and tells you how quickly you need to rebalance your hedge.
+
+* **Vega ($\nu$):** The sensitivity to volatility ($\partial C / \partial \sigma$). It measures the "fear" premium in the option.
+
+* **Theta ($\Theta$):** The sensitivity to the passage of time ($\partial C / \partial t$). Also known as 'time decay,' it represents the erosion of the option's value as it approaches expiration.
+
+* **Rho ($\rho$):** The sensitivity to the risk-free interest rate ($\partial C / \partial r$).
+""")
+
+    st.markdown("---")
+
+    # --- 2. Call vs. Put Greeks ---
+    st.subheader("2️⃣ Connection Between Call and Put Greeks")
+    st.write("""
+    Through **Put-Call Parity**, we can derive a direct relationship between the Greeks of calls and puts. 
+    Some Greeks are identical, while others are shifted.
+    """)
+
+    
+
+    col_gp1, col_gp2 = st.columns(2)
+    with col_gp1:
+        st.markdown("**When they are the SAME:**")
+        st.markdown("""
+**Gamma ($\Gamma$):** The curvature is identical for both.
+
+**Vega ($\nu$):** Volatility affects the 'optionality' equally for both.
+        """)
+        st.latex(r"\Gamma_{Call} = \Gamma_{Put}, \quad \nu_{Call} = \nu_{Put}")
+
+    with col_gp2:
+        st.markdown("**When they DIFFER:**")
+        st.write("""
+        * **Delta ($\Delta$):** Call Delta is positive ($e^{-yT}N(d_1)$), Put Delta is negative ($e^{-yT}(N(d_1)-1)$).
+        * **Theta ($\Theta$):** Usually different because the 'cost of carry' ($r$) affects the strike payment differently.
+        """)
+        st.latex(r"\Delta_{Call} - \Delta_{Put} = e^{-yT}")
+
+    st.markdown("---")
+
+    # --- 3. Greek Calculations ---
+    st.subheader("3️⃣ Calculate Your Greeks")
+    
+    # Inputs
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        S_g = st.number_input("Current Stock Price", value=100.0)
+        K_g = st.number_input("Strike Price", value=100.0)
+    with c2:
+        T_g = st.number_input("Time to Maturity (Years)", value=0.5)
+        sigma_g = st.number_input("Volatility (0.2 = 20%)", value=0.2)
+    with c3:
+        r_g = st.number_input("Risk-free Rate", value=0.04)
+        y_g = st.number_input("Dividend Yield", value=0.02)
+
+    # Logic
+    d1 = (np.log(S_g / K_g) + (r_g - y_g + 0.5 * sigma_g**2) * T_g) / (sigma_g * np.sqrt(T_g))
+    d2 = d1 - sigma_g * np.sqrt(T_g)
+    pdf_d1 = (1 / np.sqrt(2 * np.pi)) * np.exp(-0.5 * d1**2)
+
+    delta_c = np.exp(-y_g * T_g) * norm.cdf(d1)
+    delta_p = delta_c - np.exp(-y_g * T_g)
+    gamma = (pdf_d1 * np.exp(-y_g * T_g)) / (S_g * sigma_g * np.sqrt(T_g))
+    vega = S_g * np.exp(-y_g * T_g) * pdf_d1 * np.sqrt(T_g)
+
+    res_c1, res_c2, res_c3, res_c4 = st.columns(4)
+    res_c1.metric("Delta (Call)", f"{delta_c:.3f}")
+    res_c2.metric("Delta (Put)", f"{delta_p:.3f}")
+    res_c3.metric("Gamma", f"{gamma:.4f}")
+    res_c4.metric("Vega", f"{vega:.3f}")
+
+    st.markdown("---")
+
+   # --- 4. Delta Hedging Simulator ---
+    st.subheader("4️⃣ 🕹️ Portfolio Delta Hedging Simulator")
+    
+    # User Portfolio Setup
+    st.markdown("##### **Set Your Portfolio (Positive = Buy, Negative = Sell/Write)**")
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        n_calls = st.number_input("Quantity of Calls", value=10, step=1)
+    with col_p2:
+        n_puts = st.number_input("Quantity of Puts", value=0, step=1)
+
+    if st.button("🚀 Run 10-Day Stock Simulation"):
+        days = 10
+        dt = 1/252
+        prices = []
+        portfolio_deltas = []
+        
+        # 1. DAY 1 CALCULATIONS
+        current_s = S_g
+        current_t = T_g
+        
+        d1_d1 = (np.log(current_s / K_g) + (r_g - y_g + 0.5 * sigma_g**2) * current_t) / (sigma_g * np.sqrt(current_t))
+        delta_c1 = np.exp(-y_g * current_t) * norm.cdf(d1_d1)
+        delta_p1 = delta_c1 - np.exp(-y_g * current_t)
+        total_delta_d1 = (n_calls * delta_c1) + (n_puts * delta_p1)
+        
+        # 2. DAY 2 CALCULATIONS (Simulate one step)
+        np.random.seed(None) 
+        z_jump = np.random.normal()
+        next_s = current_s * np.exp((r_g - y_g - 0.5 * sigma_g**2) * dt + sigma_g * np.sqrt(dt) * z_jump)
+        next_t = current_t - dt
+        
+        d1_d2 = (np.log(next_s / K_g) + (r_g - y_g + 0.5 * sigma_g**2) * next_t) / (sigma_g * np.sqrt(next_t))
+        delta_c2 = np.exp(-y_g * next_t) * norm.cdf(d1_d2)
+        delta_p2 = delta_c2 - np.exp(-y_g * next_t)
+        total_delta_d2 = (n_calls * delta_c2) + (n_puts * delta_p2)
+
+        # --- EXPLAINER SECTION ---
+        st.markdown("### 🧮 Understanding the Rebalancing Math")
+        exp1, exp2 = st.columns(2)
+        
+        with exp1:
+            with st.expander("📝 Day 1: The Initial Hedge"):
+                st.write(f"**Stock Price ($S_1$):** ${current_s:.2f}")
+                st.write(f"**Individual Deltas:**")
+                st.latex(rf"\Delta_C = {delta_c1:.4f}, \quad \Delta_P = {delta_p1:.4f}")
+                st.write(f"**Total Portfolio Delta:**")
+                st.latex(rf"({n_calls} \times {delta_c1:.4f}) + ({n_puts} \times {delta_p1:.4f}) = {total_delta_d1:.3f}")
+                st.success(f"**Initial Action:** You must hold **{-total_delta_d1:.2f}** shares to be Delta Neutral.")
+
+        with exp2:
+            with st.expander("🔄 Day 2: The Rebalance"):
+                st.write(f"**Stock Price ($S_2$):** ${next_s:.2f}")
+                st.write(f"**Updated Portfolio Delta:**")
+                st.latex(rf"\Delta_{{Port}} = {total_delta_d2:.3f}")
+                
+                # The "How many to buy/sell" math
+                current_hedge = -total_delta_d1
+                target_hedge = -total_delta_d2
+                diff = target_hedge - current_hedge
+                
+                st.write(f"**Rebalancing Math:**")
+                st.latex(rf"{target_hedge:.2f} \text{{ (New target)}} - {current_hedge:.2f} \text{{ (Current shares)}} = {diff:+.2f}")
+                st.warning(f"**Adjustment:** {'BUY' if diff > 0 else 'SELL'} {abs(diff):.2f} shares today.")
+
+        # --- 3. FULL SIMULATION LOOP (Display Table) ---
+        sim_prices = [current_s]
+        sim_deltas = [total_delta_d1]
+        
+        # Already have Day 2 from above, now do the rest
+        curr_s_loop = next_s
+        curr_t_loop = next_t
+        for i in range(1, days):
+            sim_prices.append(curr_s_loop)
+            d1_loop = (np.log(curr_s_loop / K_g) + (r_g - y_g + 0.5 * sigma_g**2) * curr_t_loop) / (curr_s_loop * np.sqrt(curr_t_loop))
+            # (Calculation logic simplified for speed in loop)
+            dc = np.exp(-y_g * curr_t_loop) * norm.cdf((np.log(curr_s_loop/K_g)+(r_g-y_g+0.5*sigma_g**2)*curr_t_loop)/(sigma_g*np.sqrt(curr_t_loop)))
+            dp = dc - np.exp(-y_g * curr_t_loop)
+            sim_deltas.append((n_calls * dc) + (n_puts * dp))
+            
+            curr_s_loop *= np.exp((r_g - y_g - 0.5 * sigma_g**2) * dt + sigma_g * np.sqrt(dt) * np.random.normal())
+            curr_t_loop -= dt
+
+        st.write("### **10-Day Rebalancing Log**")
+        log_data = []
+        for i in range(days):
+            target_h = -sim_deltas[i]
+            prev_h = 0 if i == 0 else -sim_deltas[i-1]
+            adj = target_h - prev_h
+            log_data.append({
+                "Day": i + 1,
+                "Stock Price": f"${sim_prices[i]:.2f}",
+                "Port. Delta": f"{sim_deltas[i]:.3f}",
+                "Current Shares": f"{prev_h:.2f}",
+                "Required Shares": f"{target_h:.2f}",
+                "Action": f"{'BUY' if adj > 0 else 'SELL'} {abs(adj):.2f}"
+            })
+        st.table(log_data)

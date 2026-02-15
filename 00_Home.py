@@ -61,9 +61,11 @@ with col2:
 - Hedging applications""")
 
 st.write("""
-Use the sidebar to navigate between modules.""")
+Use the sidebar (two arrows) to navigate between modules.""")
 
 st.markdown("---")
+
+st.write("This website is primarily designed for computer screens. For the best experience, please access it on a desktop or laptop.")
 
 
 # ===========================
@@ -134,19 +136,5 @@ Dive into the world of swaps:
 
 st.markdown("---")
 
-# ===========================
-# How to Use
-# ===========================
-st.header("🎯 How to Use This Dashboard")
-
-st.write("""
-Use the **sidebar** to navigate between modules.
-
-Each module includes:
-- Theory explained intuitively  
-- Sliders to adjust market parameters  
-- Interactive charts  
-- Numerical calculations  
-- Realistic hedging examples  
-
-""")
+st.write("Note this website is a work in progress. If you have any feedback or suggestions, please reach out to me at (hendriksimon.esser@gmail.com). Additionally, the content is based on my personal notes and may contain errors. AI was used to assist in writing and formatting. I do not claim any copyright over the content. I wish you a fantastic learning experience!. ")
+st.write("Best Hendrik ")
