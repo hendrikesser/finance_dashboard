@@ -40,10 +40,10 @@ div[data-baseweb="select"] > div {
 # ===========================
 # Title
 # ===========================
-st.markdown("<div class='big-title'>📊 Financial Dashboard </div>", unsafe_allow_html=True)
+st.markdown("<div class='big-title'>📊 Derivative Dashboard </div>", unsafe_allow_html=True)
 
 st.write("""
-Welcome to the **Financial Dashboard**, an interactive learning platform covering the four major building blocks of modern derivatives markets:
+Welcome to the **Derivative Dashboard**, an interactive learning platform covering the four major building blocks of modern derivatives markets:
 
 ### **💵 Bonds • 📈 Futures • 📘 Options • 🔄 Swaps**""")
 st.write("Each section combines:")
