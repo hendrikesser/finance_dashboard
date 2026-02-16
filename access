@@ -29,3 +29,5 @@ git commit -m "Update Streamlit app: Stock & Commodity Futures section and other
 git push origin main
 
 python3 -m streamlit run 00_Home.py
+
+

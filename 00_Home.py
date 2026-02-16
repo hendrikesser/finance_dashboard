@@ -136,5 +136,5 @@ Dive into the world of swaps:
 
 st.markdown("---")
 
-st.write("Note this website is a work in progress. If you have any feedback or suggestions, please reach out to me at (hendriksimon.esser@gmail.com). Additionally, the content is based on my personal notes and may contain errors. AI was used to assist in writing and formatting. I do not claim any copyright over the content. I wish you a fantastic learning experience!. ")
+st.write("Note this website is a work in progress. If you have any feedback or suggestions, please reach out to me at (hendriksimon.esser@gmail.com). Additionally, the content is based on my personal notes and may contain errors. AI was used to assist in writing and formatting. I do not claim any copyright over the content. I wish you a fantastic learning experience! ")
 st.write("Best Hendrik ")
