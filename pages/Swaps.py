@@ -6,8 +6,8 @@ import pandas as pd
 # ===========================
 # Page Configuration
 # ===========================
-st.set_page_config(page_title="Swaps & Derivatives Dashboard", layout="wide")
-st.title("📈 Swaps & Derivatives Dashboard")
+st.set_page_config(page_title="Swaps Dashboard", layout="wide")
+st.title("📈 Swaps Dashboard")
 
 # Custom CSS for polished UI (Matching your Bonds style)
 st.markdown("""
