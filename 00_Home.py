@@ -4,7 +4,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 from streamlit.components.v1 import html
+import streamlit as st
 
+# Google Analytics snippet
 html("""
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-KESJH7R5DT"></script>
@@ -14,7 +16,7 @@ html("""
   gtag('js', new Date());
   gtag('config', 'G-KESJH7R5DT');
 </script>
-"""),
+""")
 
 # ===========================
 # Page Title & Layout
