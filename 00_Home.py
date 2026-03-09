@@ -14,7 +14,7 @@ html("""
   gtag('js', new Date());
   gtag('config', 'G-KESJH7R5DT');
 </script>
-"""), height=0, width=0)
+"""),
 
 # ===========================
 # Page Title & Layout
