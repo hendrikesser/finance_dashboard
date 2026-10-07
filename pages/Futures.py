@@ -43,11 +43,11 @@ section = st.selectbox(
 
 def futures_payoff_long(F0, K):
     """Payoff of long futures: + (F_T – F_0)"""
-    return F0 - K
+    return K - F0
 
 def futures_payoff_short(F0, K):
     """Payoff of short futures: + (K – F_T)"""
-    return K - F0
+    return F0 - K
 
 def get_future_price_spot_costcarry(spot, r, storage, convenience, T):
     """
@@ -1455,16 +1455,16 @@ elif section == "FX & Interest Rate Futures":
 
     with colA:
         st.write("""
-        Eurodollar Futures (ticker: GE) are **3-month USD interest rate futures**.  
+        Eurodollar Futures (ticker: GE) were **3-month USD LIBOR interest rate futures**. They are now a legacy contract; CME SOFR futures are the current benchmark contracts. This calculation is retained as a historical illustration.
 
         Key points:
 
         - **Notional = $1,000,000**
-        - **Quoted as 100 – annualized 3-month LIBOR**
+        - **Historical quote:** 100 minus the annualized 3-month LIBOR rate in percentage points
         - **Marked-to-market daily**
 
         If the futures price is:""") 
-        st.latex(r"\text{ED Price} = 100 - R_{\text{FRA}}")
+        st.latex(r"\text{ED Price} = 100 - 100\times R_{\text{FRA}}")
 
     with colB:
         st.write("""
@@ -1529,14 +1529,14 @@ elif section == "VIX Futures":
     """)
 
     st.write("""
-    VIX futures are **cash-settled**:
+    VIX futures are **cash-settled**. At expiration, the final settlement value is the Cboe VIX Special Opening Quotation (VRO), which can differ from the regular VIX index close:
     
     • There is **nothing to deliver** at expiration  
-    • The payoff depends only on the future realized VIX level  
+    • The payoff is based on the VRO settlement value
     """)
 
     st.latex(r"""
-    \text{Payoff (Long)} = \text{VIX}_T - F_t(T)
+    \text{Payoff (Long)} = \text{VRO}_T - F_t(T)
     """)
 
     st.write("""
@@ -1565,11 +1565,11 @@ elif section == "VIX Futures":
 
     st.write("""
     However, **convergence still holds**.
-    On expiration day, the futures price must equal the realized VIX:
+    At expiration, the contract settles to the VIX Special Opening Quotation (VRO), which can differ from the regular-session VIX close:
     """)
 
     st.latex(r"""
-    \lim_{t \to T} F_t(T) = \text{VIX}_T
+    F_T^{\text{VIX}}(T) = \text{VRO}_T
     """)
 
     st.markdown("---")
@@ -1625,7 +1625,7 @@ elif section == "VIX Futures":
         
         • VIX futures are **positively correlated** with spot VIX  
         • Short-dated futures react **more strongly** to VIX moves  
-        • Futures prices gradually converge toward spot as maturity shortens
+        • Futures prices converge toward their applicable VRO settlement value at expiration
         """)
 
     st.markdown("---")

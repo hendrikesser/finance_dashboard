@@ -150,7 +150,7 @@ elif section == "Foreign Exchange (FX) Swaps":
     st.header("💱 FX Swaps: Liquidity & Multi-Period Pricing")
     
     st.markdown("""
-    An FX Swap is a simultaneous agreement to exchange currencies at two different dates. 
+    A standard FX swap is a near-term currency exchange paired with an offsetting far-date exchange. The multi-payment calculation below is a stylized cross-currency swap example, rather than the usual two-leg FX swap.
     It is the most traded instrument in the FX market because it allows institutions to **manage liquidity** without taking on "directional risk" (betting on which way the currency goes).
     """)
 
@@ -438,7 +438,7 @@ elif section == "Credit Default Swaps (CDS)":
     with st.expander("Variable Definitions"):
         st.markdown("""
         - **Spread**: The annual premium (expressed in basis points).
-        - **$\lambda$ (Hazard Rate)**: The implied likelihood of default per year.
+        - **$\lambda$ (Hazard Rate)**: The constant instantaneous default intensity per year. The one-year default probability is $1-e^{-\lambda}$, not $\lambda$.
         - **$R$ (Recovery Rate)**: The percentage of the debt recovered after default (Standard is often 40%).
         - **$(1 - R)$**: The 'Loss Given Default' (LGD).
         """)
@@ -450,8 +450,8 @@ elif section == "Credit Default Swaps (CDS)":
     
     st.sidebar.markdown("**CDS Market Parameters:**")
     spread_bps = st.sidebar.slider("Market CDS Spread (bps)", 10, 2000, 200)
-    recovery_rate = st.sidebar.slider("Assumed Recovery Rate (%)", 0, 100, 40) / 100
-    tenor_cds = st.sidebar.number_input("Tenor (Years)", value=5)
+    recovery_rate = st.sidebar.slider("Assumed Recovery Rate (%)", 0, 99, 40) / 100
+    tenor_cds = st.sidebar.number_input("Tenor (Years)", min_value=1, max_value=30, value=5, step=1)
 
     # Calculation
     # 1 bp = 0.0001
@@ -476,10 +476,11 @@ elif section == "Credit Default Swaps (CDS)":
         st.markdown("**Valuation Summary:**")
         st.write(f"Implied Hazard Rate ($\lambda$): `{implied_hazard:.4f}`")
         st.write(f"Loss Given Default ($1-R$): `{1-recovery_rate:.2f}`")
-        st.write(f"### Annual Default Prob: {implied_hazard*100:.2f}%")
+        annual_default_probability = 1 - np.exp(-implied_hazard)
+        st.write(f"### One-Year Default Probability: {annual_default_probability*100:.2f}%")
 
     st.info(f"""
     **Result Interpretation:**
-    A CDS spread of **{spread_bps} bps** implies that the market sees a **{implied_hazard*100:.2f}%** chance of this entity defaulting every year. Over {tenor_cds} years, there is a 
+    Under the flat-hazard approximation, a CDS spread of **{spread_bps} bps** and recovery assumption of **{recovery_rate*100:.0f}%** imply a hazard rate of **{implied_hazard*100:.2f}% per year** and a one-year default probability of **{annual_default_probability*100:.2f}%**. Over {tenor_cds} years, the model gives a
     **{(1 - np.exp(-implied_hazard * tenor_cds))*100:.2f}%** cumulative chance you will have to pay out on the protection leg.
     """)

@@ -73,22 +73,28 @@ elif section == "Analytics":
 @st.cache_data
 def get_latest_yf_curve():
     symbols = {'3M': '^IRX', '5Y': '^FVX', '10Y': '^TNX', '30Y': '^TYX'}
-    
-    # Download all tickers at once → MUCH faster, avoids rate limits
-    tickers = " ".join(symbols.values())
-    df_raw = yf.download(tickers=tickers, period="1d")["Close"].iloc[-1]
+    maturities = list(symbols)
+    empty_curve = pd.DataFrame(index=maturities, columns=["Yield (%)"], dtype=float)
+    try:
+        tickers = " ".join(symbols.values())
+        downloaded = yf.download(tickers=tickers, period="1d", progress=False)
+        if downloaded.empty or "Close" not in downloaded:
+            return empty_curve
 
-    # Map downloaded tickers back to maturities
-    data = {maturity: round(df_raw[ticker], 2) for maturity, ticker in symbols.items()}
-    
-    df = pd.DataFrame({
-        "Maturity": list(data.keys()),
-        "Yield (%)": list(data.values())
-    }).set_index("Maturity")
-
-    return df
+        close = downloaded["Close"]
+        latest = close.iloc[-1]
+        data = {
+            maturity: round(float(latest[ticker]), 2)
+            for maturity, ticker in symbols.items()
+            if ticker in latest and pd.notna(latest[ticker])
+        }
+        return pd.DataFrame.from_dict(data, orient="index", columns=["Yield (%)"]).reindex(maturities)
+    except Exception:
+        return empty_curve
 
 curve_df = get_latest_yf_curve()
+if curve_df["Yield (%)"].isna().all():
+    st.warning("Treasury reference yields are unavailable right now. Bond calculations remain available without them.")
 
 
 
@@ -295,13 +301,14 @@ elif section == "Coupon-Paying Bond":
     coupon_price_cont = sum(cf * np.exp(-r_coupon*(i+1)) for i, cf in enumerate(cash_flows))
 
     # Price vs maturity for chart
-    T_values = np.linspace(1, N, 100)
+    # Plot only integer maturities so each point represents a valid bond cash-flow schedule.
+    T_values = np.arange(1, N + 1)
     prices_ann = [
-        sum(cf / (1 + r_coupon)**(i+1) for i, cf in enumerate(cash_flows[:int(t)] + [cash_flows[int(t)-1]])) 
+        sum(cf / (1 + r_coupon)**(i + 1) for i, cf in enumerate(cash_flows[:t]))
         for t in T_values
     ]
     prices_cont = [
-        sum(cf * np.exp(-r_coupon*(i+1)) for i, cf in enumerate(cash_flows[:int(t)] + [cash_flows[int(t)-1]])) 
+        sum(cf * np.exp(-r_coupon * (i + 1)) for i, cf in enumerate(cash_flows[:t]))
         for t in T_values
     ]
 
@@ -355,8 +362,8 @@ elif section == "Coupon-Paying Bond":
     with col2:
         st.subheader("Price vs Maturity")
         fig, ax = plt.subplots()
-        ax.plot(T_values, prices_ann, linestyle="--", label="Annual Compounding")
-        ax.plot(T_values, prices_cont, label="Continuous Compounding")
+        ax.plot(T_values, prices_ann, linestyle="--", marker="o", label="Annual Compounding")
+        ax.plot(T_values, prices_cont, marker="o", label="Continuous Compounding")
         ax.set_xlabel("Years")
         ax.set_ylabel("Bond Price ($)")
         ax.set_title("Coupon-Paying Bond: Annual vs Continuous Compounding")
@@ -479,18 +486,20 @@ elif section == "Analytics":
     st.write(
         "We can visualize how duration changes with bond maturity. "
         "Longer maturities generally have longer durations, which means they are more sensitive to interest rate changes. "
-        "This simple approximation assumes constant coupon payments and ignores the yield curve."
+        "Macaulay duration weights each cash flow by its present value using the selected yield; this illustration assumes a flat yield and annual coupons."
     )
 
     # Define maturity range
     maturity_range = np.arange(1, 31)  # 1 to 30 years
 
-    # Compute approximate durations
+    # Macaulay duration uses present-value weights for each cash flow.
     durations = []
     for T_m in maturity_range:
         cash_flows_m = [C]*T_m
         cash_flows_m[-1] += F
-        duration = sum((i+1)*cf for i, cf in enumerate(cash_flows_m)) / sum(cash_flows_m)
+        pv_cash_flows = [cf / (1 + r)**(i + 1) for i, cf in enumerate(cash_flows_m)]
+        price_m = sum(pv_cash_flows)
+        duration = sum((i + 1) * pv for i, pv in enumerate(pv_cash_flows)) / price_m
         durations.append(duration)
 
     # Two-column layout
@@ -514,7 +523,7 @@ elif section == "Analytics":
         ax.plot(maturity_range, durations, marker='o')
         ax.set_xlabel("Maturity (Years)")
         ax.set_ylabel("Duration (Years)")
-        ax.set_title("Duration vs Maturity (Approximation)")
+        ax.set_title("Macaulay Duration vs Maturity")
         st.pyplot(fig)
                 
     st.markdown("---")
@@ -679,4 +688,3 @@ elif section == "Analytics":
         ax.grid(alpha=0.25)
         ax.legend()
         st.pyplot(fig)
-

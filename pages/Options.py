@@ -50,15 +50,16 @@ def black_scholes(S, K, T, r, sigma, option_type="call"):
         price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
     return price, d1, d2
 
-def bsm_greeks(S, K, T, r, sigma):
+def bsm_greeks(S, K, T, r, sigma, dividend_yield=0.0):
     """Calculate the main Greeks"""
-    d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
+    d1 = (np.log(S / K) + (r - dividend_yield + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
     
-    delta_call = norm.cdf(d1)
-    delta_put = delta_call - 1
-    gamma = norm.pdf(d1) / (S * sigma * np.sqrt(T))
-    vega = S * norm.pdf(d1) * np.sqrt(T) / 100 # per 1% vol change
+    discount_stock = np.exp(-dividend_yield * T)
+    delta_call = discount_stock * norm.cdf(d1)
+    delta_put = delta_call - discount_stock
+    gamma = discount_stock * norm.pdf(d1) / (S * sigma * np.sqrt(T))
+    vega = S * discount_stock * norm.pdf(d1) * np.sqrt(T) / 100 # per 1% vol change
     
     return {"Delta Call": delta_call, "Delta Put": delta_put, "Gamma": gamma, "Vega": vega}
 
@@ -368,7 +369,7 @@ if section == "Basics & Put-Call Parity":
         **Why do dividends matter for American Options?**
         It is **never optimal** to exercise an American Call early on a non-dividend paying stock 
         because you lose the 'insurance' value and the time value of money on the strike.
-        
+
         However, with **Dividends (D)**:
         - **Calls:** High dividends make early exercise *more* likely (to capture the dividend).
         - **Puts:** High interest rates and low dividends make early exercise *more* likely (to receive the strike cash sooner).
@@ -391,11 +392,11 @@ elif section == "Binomial Tree Model":
 
     # --- Sidebar Parameters ---
     st.sidebar.header("Tree Parameters")
-    S0 = st.sidebar.number_input("Initial Stock Price ($S_0$)", value=100.0)
+    S0 = st.sidebar.number_input("Initial Stock Price ($S_0$)", min_value=0.01, value=100.0)
     sigma_b = st.sidebar.slider("Volatility ($\sigma$)", 0.1, 0.8, 0.2)
     r_b = st.sidebar.slider("Risk-free rate ($r$)", 0.0, 0.2, 0.05)
     T_b = st.sidebar.slider("Time to Maturity ($T$ in years)", 0.1, 2.0, 1.0)
-    K_b = st.sidebar.number_input("Strike Price ($K$)", value=100.0)
+    K_b = st.sidebar.number_input("Strike Price ($K$)", min_value=0.01, value=100.0)
 
     # --- 1-PERIOD BINOMIAL TREE (European Call for Intro) ---
     st.subheader("1️⃣ The 1-Period Model")
@@ -403,6 +404,10 @@ elif section == "Binomial Tree Model":
     u1 = np.exp(sigma_b * np.sqrt(dt1))
     d1 = 1/u1
     q1 = (np.exp(r_b * dt1) - d1) / (u1 - d1)
+
+    if not 0 <= q1 <= 1:
+        st.error("These parameters produce a risk-neutral probability outside [0, 1]. Adjust the rate, volatility, or maturity so the binomial model satisfies its no-arbitrage condition.")
+        st.stop()
     
     Su, Sd = S0 * u1, S0 * d1
     Cu, Cd = max(Su - K_b, 0), max(Sd - K_b, 0)
@@ -744,11 +749,11 @@ elif section == "Greeks & Risk Management":
     # Inputs
     c1, c2, c3 = st.columns(3)
     with c1:
-        S_g = st.number_input("Current Stock Price", value=100.0)
-        K_g = st.number_input("Strike Price", value=100.0)
+        S_g = st.number_input("Current Stock Price", min_value=0.01, value=100.0)
+        K_g = st.number_input("Strike Price", min_value=0.01, value=100.0)
     with c2:
-        T_g = st.number_input("Time to Maturity (Years)", value=0.5)
-        sigma_g = st.number_input("Volatility (0.2 = 20%)", value=0.2)
+        T_g = st.number_input("Time to Maturity (Years)", min_value=0.05, value=0.5)
+        sigma_g = st.number_input("Volatility (0.2 = 20%)", min_value=0.001, value=0.2)
     with c3:
         r_g = st.number_input("Risk-free Rate", value=0.04)
         y_g = st.number_input("Dividend Yield", value=0.02)
@@ -762,12 +767,20 @@ elif section == "Greeks & Risk Management":
     delta_p = delta_c - np.exp(-y_g * T_g)
     gamma = (pdf_d1 * np.exp(-y_g * T_g)) / (S_g * sigma_g * np.sqrt(T_g))
     vega = S_g * np.exp(-y_g * T_g) * pdf_d1 * np.sqrt(T_g)
+    theta_call = (
+        -S_g * np.exp(-y_g * T_g) * pdf_d1 * sigma_g / (2 * np.sqrt(T_g))
+        - r_g * K_g * np.exp(-r_g * T_g) * norm.cdf(d2)
+        + y_g * S_g * np.exp(-y_g * T_g) * norm.cdf(d1)
+    )
+    rho_call = K_g * T_g * np.exp(-r_g * T_g) * norm.cdf(d2) / 100
 
-    res_c1, res_c2, res_c3, res_c4 = st.columns(4)
+    res_c1, res_c2, res_c3, res_c4, res_c5, res_c6 = st.columns(6)
     res_c1.metric("Delta (Call)", f"{delta_c:.3f}")
     res_c2.metric("Delta (Put)", f"{delta_p:.3f}")
     res_c3.metric("Gamma", f"{gamma:.4f}")
     res_c4.metric("Vega", f"{vega:.3f}")
+    res_c5.metric("Call Theta (per year)", f"{theta_call:.3f}")
+    res_c6.metric("Call Rho (per 1% rate)", f"{rho_call:.3f}")
 
     st.markdown("---")
 
@@ -845,8 +858,7 @@ elif section == "Greeks & Risk Management":
         curr_t_loop = next_t
         for i in range(1, days):
             sim_prices.append(curr_s_loop)
-            d1_loop = (np.log(curr_s_loop / K_g) + (r_g - y_g + 0.5 * sigma_g**2) * curr_t_loop) / (curr_s_loop * np.sqrt(curr_t_loop))
-            # (Calculation logic simplified for speed in loop)
+            # Recompute Black-Scholes delta at the simulated spot and remaining maturity.
             dc = np.exp(-y_g * curr_t_loop) * norm.cdf((np.log(curr_s_loop/K_g)+(r_g-y_g+0.5*sigma_g**2)*curr_t_loop)/(sigma_g*np.sqrt(curr_t_loop)))
             dp = dc - np.exp(-y_g * curr_t_loop)
             sim_deltas.append((n_calls * dc) + (n_puts * dp))
@@ -869,4 +881,3 @@ elif section == "Greeks & Risk Management":
                 "Action": f"{'BUY' if adj > 0 else 'SELL'} {abs(adj):.2f}"
             })
         st.table(log_data)
-        

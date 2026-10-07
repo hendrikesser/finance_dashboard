@@ -1,10 +1,5 @@
 import streamlit as st
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import streamlit as st
 from streamlit.components.v1 import html
-import streamlit as st
 
 # ===========================
 # Page Title & Layout
@@ -118,7 +113,7 @@ Explore nonlinear derivatives:
 - Calls / puts and Payoff diagrams  
 - Binomial pricing  and Black–Scholes model  
 - Greeks (Delta, Gamma, Vega, Theta, Rho)  
-- Volatility smiles & implied volatility  
+- Implied-volatility concepts and an illustrative volatility skew
 """)
     st.write("➡️ Perfect for understanding asymmetric payoffs and risk sensitivities.")
     st.markdown("</div>", unsafe_allow_html=True)
